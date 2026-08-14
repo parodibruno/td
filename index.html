@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Trading Desk · BOVA11 · v2.4</title>
+<title>Trading Desk · BOVA11 · v2.5</title>
 <style>
 :root{--bg:#0b0f14;--panel:#121821;--panel2:#0e141c;--border:#1e2733;--txt:#c9d4e0;--muted:#6b7a8d;--cyan:#38e1e1;--cyan2:#4fd1ff;--green:#2ec26a;--amber:#e8b23a;--red:#e8556b;}
 *{box-sizing:border-box}
@@ -110,7 +110,7 @@ canvas{width:100%;height:260px;display:block;background:var(--panel2);border-rad
       <button onclick="unlock()">Entrar →</button>
       <button class="ghost" onclick="document.getElementById('apiKey').value='demo';unlock()">Usar dados demo</button>
     </div>
-    <div class="ver">Trading Desk · v2.4</div>
+    <div class="ver">Trading Desk · v2.5</div>
   </div>
 </div>
 
@@ -194,8 +194,8 @@ canvas{width:100%;height:260px;display:block;background:var(--panel2);border-rad
         <table>
           <thead><tr><th>Perna</th><th>Qtd</th><th>Entrada</th><th>Último</th><th>Δ perna</th><th>P&amp;L</th></tr></thead>
           <tbody>
-            <tr><td>BOVAJ36 CALL K180</td><td>V 4000</td><td>2,68</td><td>1,87</td><td class="delta-cell amber">11Δ <span class="dwarn" title="Delta estimado pelo desk (BS próprio) — Oplab /v2/positions não retorna delta por perna. Calibração perna-a-perna pendente.">⚠</span></td><td class="green">+R$ 3.160,00</td></tr>
-            <tr><td>BOVAV152 PUT K152</td><td>V 4000</td><td>1,45</td><td>1,67</td><td class="delta-cell amber">19Δ <span class="dwarn" title="Delta estimado pelo desk (BS próprio) — Oplab /v2/positions não retorna delta por perna. Calibração perna-a-perna pendente.">⚠</span></td><td class="red">−R$ 920,00</td></tr>
+            <tr><td>BOVAJ36 CALL K180</td><td>V 4000</td><td>2,68</td><td>1,87</td><td class="delta-cell amber">−11Δ <span class="dwarn" title="Delta estimado pelo desk (BS próprio) — Oplab /v2/positions não retorna delta por perna. Calibração perna-a-perna pendente.">⚠</span></td><td class="green">+R$ 3.160,00</td></tr>
+            <tr><td>BOVAV152 PUT K152</td><td>V 4000</td><td>1,45</td><td>1,67</td><td class="delta-cell amber">+19Δ <span class="dwarn" title="Delta estimado pelo desk (BS próprio) — Oplab /v2/positions não retorna delta por perna. Calibração perna-a-perna pendente.">⚠</span></td><td class="red">−R$ 920,00</td></tr>
           </tbody>
         </table>
         <div class="delta-note">⚠ Deltas por perna são estimados internamente (viés conhecido: PUT superestimado, CALL subestimado) — calibração vs. Oplab pendente.</div>
@@ -208,13 +208,13 @@ canvas{width:100%;height:260px;display:block;background:var(--panel2);border-rad
             <span class="gchip gc-ok">① Stop fin. — OK</span>
             <span class="gchip gc-ok">② Take-profit 14% — OK</span>
             <span class="gchip gc-ok">③ Dist. BE 9,0% — OK</span>
-            <span class="gchip gc-ok">④ Nível A (max 19Δ / gat. 48Δ) — OK</span>
+            <span class="gchip gc-ok">④ Nível A (max +19Δ / gat. 48Δ) — OK</span>
           </div>
           <div style="margin-top:10px">
-            <div class="diag-leg"><span class="lname">CALL K180</span><span class="lstat">11Δ · gatilho R$ 174,66 · dist. +7,3% · BE 182,68 (1,58σ)</span></div>
-            <div class="diag-leg"><span class="lname">PUT K152</span><span class="lstat">19Δ · gatilho R$ 149,33 · dist. −8,3% · BE 147,95 (1,11σ)</span></div>
+            <div class="diag-leg"><span class="lname">CALL K180</span><span class="lstat">−11Δ · gatilho R$ 174,66 · dist. +7,3% · BE 182,68 (1,58σ)</span></div>
+            <div class="diag-leg"><span class="lname">PUT K152</span><span class="lstat">+19Δ · gatilho R$ 149,33 · dist. −8,3% · BE 147,95 (1,11σ)</span></div>
           </div>
-          <div class="diag-action">Ação recomendada: <b>Aguardar.</b> Nenhum gate disparado. Perna mais próxima do gatilho é a PUT K152 (19Δ vs. 48Δ do gate ④, faixa DTE&gt;30) — folga de 29Δ, sem urgência.</div>
+          <div class="diag-action">Ação recomendada: <b>Aguardar.</b> Nenhum gate disparado. Perna mais próxima do gatilho é a PUT K152 (+19Δ vs. 48Δ do gate ④, faixa DTE&gt;30) — folga de 29 pontos de Δ, sem urgência.</div>
           <div class="diag-port">⑤ Nível B e ⑥ Stress são avaliados no nível carteira, não por estrutura — ver cards acima.</div>
         </div>
       </div>
@@ -237,7 +237,7 @@ canvas{width:100%;height:260px;display:block;background:var(--panel2);border-rad
         <table>
           <thead><tr><th>Perna</th><th>Qtd</th><th>Entrada</th><th>Último</th><th>Δ perna</th><th>P&amp;L</th></tr></thead>
           <tbody>
-            <tr><td>BOVAJ17 CALL K170</td><td>V 300</td><td>6,04</td><td>4,51</td><td class="delta-cell amber">31Δ <span class="dwarn" title="Delta estimado pelo desk (BS próprio) — Oplab /v2/positions não retorna delta por perna. Calibração perna-a-perna pendente.">⚠</span></td><td class="green">+R$ 450,00</td></tr>
+            <tr><td>BOVAJ17 CALL K170</td><td>V 300</td><td>6,04</td><td>4,51</td><td class="delta-cell amber">−31Δ <span class="dwarn" title="Delta estimado pelo desk (BS próprio) — Oplab /v2/positions não retorna delta por perna. Calibração perna-a-perna pendente.">⚠</span></td><td class="green">+R$ 450,00</td></tr>
           </tbody>
         </table>
         <div class="delta-note">⚠ Delta estimado internamente (viés conhecido: CALL longa tende a subestimar) — calibração vs. Oplab pendente.</div>
@@ -250,12 +250,12 @@ canvas{width:100%;height:260px;display:block;background:var(--panel2);border-rad
             <span class="gchip gc-ok">① Stop fin. — OK</span>
             <span class="gchip gc-ok">② Take-profit 25% — OK</span>
             <span class="gchip gc-ok">③ Dist. BE 8,3% — OK</span>
-            <span class="gchip gc-warn">④ Nível A (31Δ / gat. 48Δ) — perna mais quente do book</span>
+            <span class="gchip gc-warn">④ Nível A (−31Δ / gat. 48Δ) — perna mais quente do book</span>
           </div>
           <div style="margin-top:10px">
-            <div class="diag-leg"><span class="lname">CALL K170</span><span class="lstat">31Δ · gatilho R$ 164,85 · dist. +1,3% · BE 176,13 (1,02σ)</span></div>
+            <div class="diag-leg"><span class="lname">CALL K170</span><span class="lstat">−31Δ · gatilho R$ 164,85 · dist. +1,3% · BE 176,13 (1,02σ)</span></div>
           </div>
-          <div class="diag-action">Ação recomendada: <b>Aguardar, monitorar de perto.</b> 31Δ ainda abaixo do gatilho ④ (48Δ, faixa DTE&gt;30), mas é a perna com menor folga do book (17Δ) e o spot está a só 1,3% do preço-gatilho. Se VXBR passar de 22,17, gatilho cai pra 44Δ — reavaliar.</div>
+          <div class="diag-action">Ação recomendada: <b>Aguardar, monitorar de perto.</b> −31Δ (módulo 31) ainda abaixo do gatilho ④ (48Δ, faixa DTE&gt;30), mas é a perna com menor folga do book (17 pontos de Δ) e o spot está a só 1,3% do preço-gatilho. Se VXBR passar de 22,17, gatilho cai pra 44Δ — reavaliar.</div>
           <div class="diag-port">⑤ Nível B e ⑥ Stress são avaliados no nível carteira, não por estrutura — ver cards acima.</div>
         </div>
       </div>
@@ -312,9 +312,9 @@ Spot: R$ 162,74 (-0,86%) | IV: 19,66% | IV Rank: 31,9
 
 POSIÇÕES:
 [strangle 152-180 out] 43du | AGUARDAR | P&L +R$2.240,00 (14% capturado)
-  CALL K180 11Δ⚠ dispara em R$174,66 · dist +7,3% | PUT K152 19Δ⚠ dispara em R$149,33 · dist -8,3%
+  CALL K180 −11Δ⚠ dispara em R$174,66 · dist +7,3% | PUT K152 +19Δ⚠ dispara em R$149,33 · dist -8,3%
 [vendal call seca 170 out] 43du | AGUARDAR | P&L +R$450,00 (25% capturado)
-  CALL K170 31Δ⚠ dispara em R$164,85 · dist +1,3% (perna mais quente do book)
+  CALL K170 −31Δ⚠ dispara em R$164,85 · dist +1,3% (perna mais quente do book)
 
 P&L TOTAL: +R$2.690,00
 Gregas consolidadas: Δ+217 Θ+302 Γ-149 ν-1320
