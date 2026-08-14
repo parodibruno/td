@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Trading Desk · BOVA11 · v2</title>
+<title>Trading Desk · BOVA11 · v2.1</title>
 <style>
   :root{
     --bg:#0b0f14;--panel:#121821;--panel2:#0e141c;--border:#1e2733;
@@ -13,17 +13,17 @@
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--txt);font-family:var(--mono);font-size:14px;line-height:1.45;padding:16px}
-  h1,h2,h3{font-weight:600;margin:0}
   .wrap{max-width:1280px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
   .hidden{display:none!important}
   #gate{position:fixed;inset:0;background:var(--bg);z-index:50;display:flex;align-items:center;justify-content:center;padding:20px}
   #gate .box{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:28px;max-width:440px;width:100%}
-  #gate h2{color:var(--cyan);font-size:18px;margin-bottom:6px}
+  #gate h2{color:var(--cyan);font-size:18px;margin:0 0 6px}
   #gate p{color:var(--muted);font-size:12px;margin:0 0 18px}
+  #gate .ver{color:var(--muted);font-size:11px;margin-top:16px;text-align:center}
   input,select{background:var(--panel2);border:1px solid var(--border);color:var(--txt);font-family:var(--mono);font-size:14px;padding:9px 11px;border-radius:7px;width:100%}
   button{background:var(--cyan);color:#062;border:none;font-family:var(--mono);font-weight:700;padding:10px 16px;border-radius:7px;cursor:pointer;font-size:13px}
   button.ghost{background:transparent;border:1px solid var(--border);color:var(--txt)}
-  .lock{font-size:11px;color:var(--muted);margin-top:14px;display:flex;gap:6px;align-items:flex-start}
+  #gateErr{color:var(--red);font-size:11px;margin-top:8px;min-height:14px}
   header{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
   header .logo{color:var(--cyan);font-weight:700;letter-spacing:1px;font-size:18px}
   header .tag{color:var(--muted);font-size:12px}
@@ -58,22 +58,20 @@
   .prog{height:5px;background:var(--border);border-radius:3px;overflow:hidden;margin-top:8px}.prog>i{display:block;height:100%;background:var(--cyan)}
   .strat-body{padding:0 16px 16px;display:none;border-top:1px solid var(--border);margin-top:2px}
   .strat.open .strat-body{display:block}
-  .caret{transition:transform .15s}.strat.open .caret{transform:rotate(90deg)}
+  .caret{transition:transform .15s;display:inline-block}.strat.open .caret{transform:rotate(90deg)}
   table{width:100%;border-collapse:collapse;font-size:12px;margin-top:10px}
   th,td{text-align:right;padding:6px 8px;border-bottom:1px solid var(--border)}
   th{color:var(--muted);font-weight:500;text-transform:uppercase;font-size:10px}
   td:first-child,th:first-child{text-align:left}
   .greeks{display:flex;gap:18px;margin-top:12px;flex-wrap:wrap}.greeks div{color:var(--muted);font-size:11px}.greeks b{color:var(--txt);font-size:15px;display:block}
   .trigger{background:rgba(232,85,107,.06);border:1px solid rgba(232,85,107,.2);border-radius:8px;padding:10px;margin-top:12px;font-size:12px}
-  canvas{width:100%;height:300px;display:block;background:var(--panel2);border-radius:8px}
+  canvas{width:100%;height:280px;display:block;background:var(--panel2);border-radius:8px}
   .tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
   .tabs button{background:var(--panel2);border:1px solid var(--border);color:var(--muted);font-weight:500;padding:6px 12px}
   .tabs button.active{color:var(--cyan2);border-color:var(--cyan2)}
   .legend{display:flex;gap:16px;font-size:11px;color:var(--muted);margin-top:8px;flex-wrap:wrap}
   .legend i{display:inline-block;width:14px;height:3px;vertical-align:middle;margin-right:5px}
   .section-title{color:var(--muted);font-size:12px;letter-spacing:1px;text-transform:uppercase;padding:4px 0}
-  .note{background:rgba(79,209,255,.06);border:1px solid rgba(79,209,255,.2);border-radius:8px;padding:12px;font-size:12px;color:var(--muted)}
-  .note b{color:var(--cyan2)}.iv-bad{color:var(--muted);font-style:italic}
   .bias-bar{display:flex;height:10px;border-radius:5px;overflow:hidden;margin:10px 0}
   .bias-bar>i{flex:1}
   .ind{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);font-size:12px}
@@ -88,20 +86,21 @@
 <div id="gate">
   <div class="box">
     <h2>Acesso ao Trading Desk</h2>
-    <p>Insira sua chave da API para carregar os dados. Ela fica somente neste navegador (sessão) e nunca é enviada a terceiros.</p>
-    <input id="apiKey" type="password" placeholder="Cole sua chave da API (ex.: oplab_...)" autocomplete="off">
-    <div style="display:flex;gap:10px;margin-top:14px">
+    <p>Insira sua chave da API para carregar os dados.</p>
+    <input id="apiKey" type="password" placeholder="Cole sua chave da API" autocomplete="off">
+    <div id="gateErr"></div>
+    <div style="display:flex;gap:10px;margin-top:10px">
       <button onclick="unlock()">Entrar →</button>
       <button class="ghost" onclick="document.getElementById('apiKey').value='demo';unlock()">Usar dados demo</button>
     </div>
-    <div class="lock">🔒 Seus dados representam capital real. Nada é persistido em disco nem transmitido para fora do seu navegador nesta sessão.</div>
+    <div class="ver">Trading Desk · v2.1</div>
   </div>
 </div>
 
 <div class="wrap hidden" id="app">
   <header>
     <span class="logo">TRADING DESK</span>
-    <span class="tag">BOVA11 · v2</span>
+    <span class="tag">BOVA11 · v2.1</span>
     <span class="spot">R$ 162,74 <span class="chip down">−0,86%</span></span>
   </header>
 
@@ -116,8 +115,8 @@
   <div class="grid">
     <div class="card">
       <div class="lbl">P&amp;L · Estratégias</div>
-      <div class="big green" id="plTotal">+R$ 2.690,00</div>
-      <div class="kv"><span class="k">% do capital</span><span class="v cyan" id="plPct">+0,22%</span></div>
+      <div class="big green" id="plTotal">—</div>
+      <div class="kv"><span class="k">% do capital</span><span class="v cyan" id="plPct">—</span></div>
       <div class="kv"><span class="k">Estruturas</span><span class="v">2</span></div>
       <div class="kv"><span class="k">Pernas abertas</span><span class="v">3</span></div>
     </div>
@@ -149,7 +148,7 @@
   <div class="card">
     <div class="section-title">Payoff</div>
     <div class="tabs" id="payoffTabs"></div>
-    <canvas id="payoff" width="1200" height="300"></canvas>
+    <canvas id="payoff" width="1200" height="280"></canvas>
     <div class="legend">
       <span><i style="background:#4fd1ff"></i>No vencimento</span>
       <span><i style="background:#e8e8e8"></i>Spot 162,74</span>
@@ -198,99 +197,131 @@
 
 <script>
 function unlock(){
-  var k=document.getElementById('apiKey').value.trim();
-  if(!k){document.getElementById('apiKey').style.borderColor='var(--red)';return;}
+  var el=document.getElementById('apiKey');
+  var k=el.value.trim();
+  if(!k){ document.getElementById('gateErr').textContent='Informe uma chave (ou use "dados demo").'; return; }
   window._apiKey=k;
   document.getElementById('gate').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
-  recompute();
+  try{ recompute(); }catch(e){ console.error(e); alert('Erro ao carregar: '+e.message); }
 }
+
 function normIvPct(raw){
-  if(raw==null||!isFinite(raw))return null;
-  var pct=raw<3?raw*100:raw;
-  if(pct<=0||pct<5||pct>150)return null;
+  if(raw==null||!isFinite(raw)) return null;
+  var pct = raw<3 ? raw*100 : raw;
+  if(pct<=0 || pct<5 || pct>150) return null;
   return pct;
 }
-var CAPITAL=1217000,VXBR=17.44;
-var spot=162.74,ivSpot=0.1966,dteUteis=43;
+
+var CAPITAL=1217000, VXBR=17.44;
+var spot=162.74, ivSpot=0.1966, dteUteis=43;
+
 var rawStrategies=[
  {name:'strangle 152-180 out',dte:43,
-  legs:[{tk:'BOVAJ36',tipo:'CALL',k:180,qtd:4000,ent:2.68,ult:1.87},{tk:'BOVAV152',tipo:'PUT',k:152,qtd:4000,ent:1.45,ult:1.67}],
+  legs:[{tk:'BOVAJ36',tipo:'CALL',k:180,qtd:4000,ent:2.68,ult:1.87},
+        {tk:'BOVAV152',tipo:'PUT',k:152,qtd:4000,ent:1.45,ult:1.67}],
   creditoTotal:16520,gregas:{d:309,t:285,g:-141,v:-1249},
-  triggers:[{leg:'PUT K152',delta:19,at:149.33},{leg:'CALL K180',delta:11,at:174.66}],breakevens:[147.95,184.09]},
+  triggers:[{leg:'PUT K152',delta:19,at:149.33},{leg:'CALL K180',delta:11,at:174.66}],
+  breakevens:[147.95,184.09]},
  {name:'vendal call seca 170 out',dte:43,
   legs:[{tk:'BOVAJ17',tipo:'CALL',k:170,qtd:300,ent:6.04,ult:4.51}],
   creditoTotal:1812,gregas:{d:-92,t:16,g:-8,v:-71},
-  triggers:[{leg:'CALL K170',delta:31,at:164.85}],breakevens:[176.13]}
+  triggers:[{leg:'CALL K170',delta:31,at:164.85}],
+  breakevens:[176.13]}
 ];
+
+var radarVolData=[
+ {estrutura:'Straddle ATM',venc:'18/dez/26 · 87du',pernas:'CK164 PK164',cred:19.29,pop:0,be:'144,71 / 183,29'},
+ {estrutura:'Straddle ATM',venc:'16/out/26 · 43du',pernas:'CK163 PK163',cred:12.70,pop:0,be:'150,30 / 175,70'},
+ {estrutura:'Strangle Δ30',venc:'18/dez/26 · 87du',pernas:'CK174 PK155',cred:10.47,pop:38,be:'144,53 / 184,47'},
+ {estrutura:'Strangle Δ22',venc:'16/out/26 · 43du',pernas:'CK174 PK153',cred:5.08,pop:57,be:'147,91 / 179,09'},
+ {estrutura:'Strangle Δ15',venc:'16/out/26 · 43du',pernas:'CK178 PK150',cred:3.60,pop:71,be:'146,40 / 181,60'}
+];
+var radarDirData=[
+ {tipo:'Venda PUT',delta:0.29,venc:'16/out/26·43du',strike:156,cred:2.54,pop:71,ret:9.7,be:153.46},
+ {tipo:'Venda PUT',delta:0.19,venc:'16/out/26·43du',strike:152,cred:1.67,pop:81,ret:6.5,be:150.33},
+ {tipo:'Venda CALL',delta:0.31,venc:'16/out/26·43du',strike:170,cred:4.54,pop:69,ret:16.1,be:174.53},
+ {tipo:'Venda CALL',delta:0.19,venc:'16/out/26·43du',strike:175,cred:2.95,pop:81,ret:10.0,be:177.94}
+];
+
 var VM=[];
+
 function buildViewModel(s){
-  var pl=s.legs.reduce(function(a,l){return a+(l.ent-l.ult)*l.qtd;},0);
-  var capturado=Math.max(0,pl/s.creditoTotal);
-  var nearestBE=s.breakevens.reduce(function(b,x){return Math.abs(x-spot)<Math.abs(b-spot)?x:b;},s.breakevens[0]);
+  var pl=0; for(var i=0;i<s.legs.length;i++){ var l=s.legs[i]; pl += (l.ent-l.ult)*l.qtd; }
+  var capturado=Math.max(0, pl/s.creditoTotal);
+  var nearestBE=s.breakevens[0];
+  for(var j=1;j<s.breakevens.length;j++){ if(Math.abs(s.breakevens[j]-spot)<Math.abs(nearestBE-spot)) nearestBE=s.breakevens[j]; }
   var distPct=Math.abs(nearestBE-spot)/spot;
   var sigma=ivSpot*Math.sqrt(dteUteis/252);
   var distSigma=distPct/sigma;
-  var trig=s.triggers.reduce(function(b,t){return Math.abs(t.at-spot)<Math.abs(b.at-spot)?t:b;},s.triggers[0]);
-  var status='AGUARDAR',cls='g';
-  var maxDelta=Math.max.apply(null,s.triggers.map(function(t){return t.delta;}));
-  if(maxDelta>=42||distSigma<0.8){status='ATENÇÃO';cls='a';}
-  if(maxDelta>=48||capturado>=0.65){status=maxDelta>=48?'ROLAR':'DESMONTAR';cls='r';}
-  var thetaPctCred=s.gregas.t/(s.creditoTotal*(1-capturado))*100;
-  return Object.assign({},s,{pl:pl,capturado:capturado,distPct:distPct,distSigma:distSigma,nearestBE:nearestBE,thetaPctCred:thetaPctCred,status:status,cls:cls,plPctCap:pl/CAPITAL*100,trig:trig});
+  var trig=s.triggers[0];
+  for(var k=1;k<s.triggers.length;k++){ if(Math.abs(s.triggers[k].at-spot)<Math.abs(trig.at-spot)) trig=s.triggers[k]; }
+  var maxDelta=0; for(var m=0;m<s.triggers.length;m++){ if(s.triggers[m].delta>maxDelta) maxDelta=s.triggers[m].delta; }
+  var status='AGUARDAR', cls='g';
+  if(maxDelta>=42 || distSigma<0.8){ status='ATENÇÃO'; cls='a'; }
+  if(maxDelta>=48 || capturado>=0.65){ status = maxDelta>=48 ? 'ROLAR' : 'DESMONTAR'; cls='r'; }
+  var thetaPctCred = s.gregas.t / (s.creditoTotal*(1-capturado)) * 100;
+  return {
+    name:s.name, dte:s.dte, legs:s.legs, creditoTotal:s.creditoTotal, gregas:s.gregas,
+    triggers:s.triggers, breakevens:s.breakevens,
+    pl:pl, capturado:capturado, distPct:distPct, distSigma:distSigma,
+    nearestBE:nearestBE, thetaPctCred:thetaPctCred, status:status, cls:cls,
+    plPctCap: pl/CAPITAL*100, trig:trig
+  };
 }
-function fmtR(v){return (v<0?'−':'+')+'R$ '+Math.abs(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
+
+function fmtR(v){ return (v<0?'−':'+')+'R$ '+Math.abs(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 var clsColor={g:'green',a:'amber',r:'red'};
+
 function renderStrategies(){
- document.getElementById('strategies').innerHTML=VM.map(function(v,i){return ''+
-  '<div class="strat '+v.cls+'" id="st'+i+'">'+
-    '<div class="strat-head" onclick="document.getElementById(\'st'+i+'\').classList.toggle(\'open\')">'+
-      '<span class="caret">▸</span><span class="name">'+v.name+'</span>'+
-      '<span class="status st-'+v.cls+'"><span class="dot '+clsColor[v.cls]+'"></span>'+v.status+'</span>'+
-      '<span class="pl '+(v.pl>=0?'green':'red')+'">'+fmtR(v.pl)+'</span>'+
-    '</div>'+
-    '<div class="strat-metrics">'+
-      '<div class="metric"><div class="k">DTE úteis</div><div class="v">'+v.dte+'</div></div>'+
-      '<div class="metric"><div class="k">Capturado</div><div class="v">'+(v.capturado*100).toFixed(0)+'%</div><div class="prog"><i style="width:'+Math.min(100,v.capturado*100)+'%"></i></div></div>'+
-      '<div class="metric"><div class="k">Dist. BE</div><div class="v">'+(v.distPct*100).toFixed(1)+'%</div><div class="sub">'+v.distSigma.toFixed(2)+'σ</div></div>'+
-      '<div class="metric"><div class="k">θ / créd. rest.</div><div class="v">'+v.thetaPctCred.toFixed(1)+'%<span class="sub">/dia</span></div></div>'+
-      '<div class="metric"><div class="k">P&L / capital</div><div class="v '+(v.pl>=0?'green':'red')+'">'+(v.plPctCap>=0?'+':'')+v.plPctCap.toFixed(3)+'%</div></div>'+
-    '</div>'+
-    '<div class="strat-body">'+
-      '<table><thead><tr><th>Perna</th><th>Qtd</th><th>Entrada</th><th>Último</th><th>P&L</th></tr></thead><tbody>'+
-      v.legs.map(function(l){var p=(l.ent-l.ult)*l.qtd;return '<tr><td>'+l.tk+' '+l.tipo+' K'+l.k+'</td><td>V '+l.qtd+'</td><td>'+l.ent.toFixed(2)+'</td><td>'+l.ult.toFixed(2)+'</td><td class="'+(p>=0?'green':'red')+'">'+fmtR(p)+'</td></tr>';}).join('')+
-      '</tbody></table>'+
-      '<div class="greeks"><div>Δ Delta<b>'+(v.gregas.d>=0?'+':'')+v.gregas.d+'</b></div><div>Θ Theta/d<b>+'+v.gregas.t+'</b></div><div>Γ Gamma<b>'+v.gregas.g+'</b></div><div>ν Vega<b>'+v.gregas.v+'</b></div></div>'+
-      '<div class="trigger">Gatilho mais próximo: <b>'+v.trig.leg+'</b> ('+v.trig.delta+'Δ) dispara em <b>R$ '+v.trig.at.toFixed(2)+'</b> · breakeven '+v.nearestBE.toFixed(2)+' a <b>'+v.distSigma.toFixed(2)+'σ</b> do spot.</div>'+
-    '</div>'+
-  '</div>';}).join('');
+  var html='';
+  for(var i=0;i<VM.length;i++){
+    var v=VM[i];
+    var legsHtml='';
+    for(var j=0;j<v.legs.length;j++){
+      var l=v.legs[j]; var p=(l.ent-l.ult)*l.qtd;
+      legsHtml += '<tr><td>'+l.tk+' '+l.tipo+' K'+l.k+'</td><td>V '+l.qtd+'</td><td>'+l.ent.toFixed(2)+'</td><td>'+l.ult.toFixed(2)+'</td><td class="'+(p>=0?'green':'red')+'">'+fmtR(p)+'</td></tr>';
+    }
+    html += ''+
+    '<div class="strat '+v.cls+'" id="st'+i+'">'+
+      '<div class="strat-head" onclick="toggleStrat('+i+')">'+
+        '<span class="caret">▸</span><span class="name">'+v.name+'</span>'+
+        '<span class="status st-'+v.cls+'"><span class="dot '+clsColor[v.cls]+'"></span>'+v.status+'</span>'+
+        '<span class="pl '+(v.pl>=0?'green':'red')+'">'+fmtR(v.pl)+'</span>'+
+      '</div>'+
+      '<div class="strat-metrics">'+
+        '<div class="metric"><div class="k">DTE úteis</div><div class="v">'+v.dte+'</div></div>'+
+        '<div class="metric"><div class="k">Capturado</div><div class="v">'+(v.capturado*100).toFixed(0)+'%</div><div class="prog"><i style="width:'+Math.min(100,v.capturado*100)+'%"></i></div></div>'+
+        '<div class="metric"><div class="k">Dist. BE</div><div class="v">'+(v.distPct*100).toFixed(1)+'%</div><div class="sub">'+v.distSigma.toFixed(2)+'σ</div></div>'+
+        '<div class="metric"><div class="k">θ / créd. rest.</div><div class="v">'+v.thetaPctCred.toFixed(1)+'%<span class="sub">/dia</span></div></div>'+
+        '<div class="metric"><div class="k">P&L / capital</div><div class="v '+(v.pl>=0?'green':'red')+'">'+(v.plPctCap>=0?'+':'')+v.plPctCap.toFixed(3)+'%</div></div>'+
+      '</div>'+
+      '<div class="strat-body">'+
+        '<table><thead><tr><th>Perna</th><th>Qtd</th><th>Entrada</th><th>Último</th><th>P&L</th></tr></thead><tbody>'+legsHtml+'</tbody></table>'+
+        '<div class="greeks"><div>Δ Delta<b>'+(v.gregas.d>=0?'+':'')+v.gregas.d+'</b></div><div>Θ Theta/d<b>+'+v.gregas.t+'</b></div><div>Γ Gamma<b>'+v.gregas.g+'</b></div><div>ν Vega<b>'+v.gregas.v+'</b></div></div>'+
+        '<div class="trigger">Gatilho mais próximo: <b>'+v.trig.leg+'</b> ('+v.trig.delta+'Δ) dispara em <b>R$ '+v.trig.at.toFixed(2)+'</b> · breakeven '+v.nearestBE.toFixed(2)+' a <b>'+v.distSigma.toFixed(2)+'σ</b> do spot.</div>'+
+      '</div>'+
+    '</div>';
+  }
+  document.getElementById('strategies').innerHTML=html;
 }
+function toggleStrat(i){ document.getElementById('st'+i).classList.toggle('open'); }
+
 var payoffMode='all';
 function payoffAt(S,idx){
-  var list=idx==='all'?VM:[VM[idx]];var v=0;
-  list.forEach(function(vm){vm.legs.forEach(function(l){
-    var intr=l.tipo==='CALL'?Math.max(0,S-l.k):Math.max(0,l.k-S);
-    v+=(l.ent-intr)*l.qtd;});});
+  var list = idx==='all' ? VM : [VM[idx]];
+  var v=0;
+  for(var a=0;a<list.length;a++){
+    var vm=list[a];
+    for(var b=0;b<vm.legs.length;b++){
+      var l=vm.legs[b];
+      var intr = l.tipo==='CALL' ? Math.max(0,S-l.k) : Math.max(0,l.k-S);
+      v += (l.ent-intr)*l.qtd;
+    }
+  }
   return v;
 }
 function renderPayoffTabs(){
-  document.getElementById('payoffTabs').innerHTML=
-   '<button class="'+(payoffMode==='all'?'active':'')+'" onclick="setPayoff(\'all\')">Consolidado</button>'+
-   VM.map(function(v,i){return '<button class="'+(payoffMode===i?'active':'')+'" onclick="setPayoff('+i+')">'+v.name+'</button>';}).join('');
-}
-function setPayoff(m){payoffMode=m;renderPayoffTabs();drawPayoff();}
-function drawPayoff(){
-  var cv=document.getElementById('payoff'),ctx=cv.getContext('2d');
-  var W=cv.width,H=cv.height,lo=135,hi=195,pad=40,idx=payoffMode;
-  function xs(S){return pad+(S-lo)/(hi-lo)*(W-2*pad);}
-  var vals=[];for(var S=lo;S<=hi;S+=0.5)vals.push(payoffAt(S,idx));
-  var vmax=Math.max.apply(null,vals),vmin=Math.min.apply(null,vals);
-  function ys(v){return H-pad-(v-vmin)/((vmax-vmin)||1)*(H-2*pad);}
-  ctx.clearRect(0,0,W,H);
-  var bes=[];for(var s=lo;s<hi;s+=0.1){if(payoffAt(s,idx)*payoffAt(s+0.1,idx)<0)bes.push(s);}
-  if(bes.length>=2){ctx.fillStyle='rgba(46,194,106,.12)';ctx.fillRect(xs(bes[0]),pad,xs(bes[bes.length-1])-xs(bes[0]),H-2*pad);}
-  ctx.strokeStyle='#2a3542';ctx.beginPath();ctx.moveTo(pad,ys(0));ctx.lineTo(W-pad,ys(0));ctx.stroke();
-  ctx.strokeStyle='#4fd1ff';ctx.lineWidth=2;ctx.beginPath();
-  vals.forEach(function(v,i){var S=lo+i*0.5;if(i)ctx.lineTo(xs(S),ys(v));else ctx.moveTo(xs(S),ys(v));});ctx.stroke();
-  ctx.strokeStyle='#e8e8e8';ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(xs(spot),pad);ctx.lineTo(xs(spot),H-pad);ctx.stroke();ctx.setLineDash([]);
-  ctx.fillStyle='#e8e8e8';ct
+  var html='<button class="'+(payoffMode==='all'?'active':'')+'" onclick="setPayoff(\'all\')">Consolidado</button>';
+  for(var i=0;i<VM.length;i++){
+    html += '<button class="'+(payoffMode===i?'active':'')+
