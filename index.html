@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trading Desk · BOVA11 · Protótipo de Melhorias</title>
+<style>
+  :root{
+    --bg:#0b0f14; --panel:#121821; --panel2:#0e141c; --border:#1e2733;
+    --txt:#c9d4e0; --muted:#6b7a8d; --cyan:#38e1e1; --cyan2:#4fd1ff;
+    --green:#2ec26a; --amber:#e8b23a; --red:#e8556b;
+    --mono:"SF Mono",ui-monospace,"Cascadia Code",Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font-family:var(--mono);font-size:14px;line-height:1.45;padding:16px}
+  h1,h2,h3{font-weight:600;margin:0}
+  .wrap{max-width:1280px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+
+  /* header */
+  header{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  header .logo{color:var(--cyan);font-weight:700;letter-spacing:1px;font-size:18px}
+  header .tag{color:var(--muted);font-size:12px}
+  header .spot{margin-left:auto;font-size:24px;font-weight:700}
+  .chip{font-size:12px;padding:2px 8px;border-radius:4px}
+  .chip.down{background:rgba(232,85,107,.15);color:var(--red)}
+
+  /* cards grid */
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px}
+  .card .lbl{color:var(--muted);font-size:11px;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px}
+  /* MELHORIA 4: par label-em-cima / valor-embaixo evita colar texto */
+  .kv{display:flex;justify-content:space-between;gap:12px;padding:3px 0}
+  .kv .k{color:var(--muted);white-space:nowrap}
+  .kv .v{font-weight:600;text-align:right}
+  .big{font-size:26px;font-weight:700}
+  .green{color:var(--green)} .red{color:var(--red)} .amber{color:var(--amber)} .cyan{color:var(--cyan2)} .muted{color:var(--muted)}
+
+  /* MELHORIA 3: sistema semafórico consistente */
+  .status{display:inline-flex;align-items:center;gap:6px;font-weight:700;font-size:12px;padding:3px 10px;border-radius:5px;letter-spacing:.5px}
+  .st-green{background:rgba(46,194,106,.14);color:var(--green)}
+  .st-amber{background:rgba(232,178,58,.16);color:var(--amber)}
+  .st-red{background:rgba(232,85,107,.16);color:var(--red)}
+  .dot{width:8px;height:8px;border-radius:50%}
+  .dot.green{background:var(--green)} .dot.amber{background:var(--amber)} .dot.red{background:var(--red)}
+
+  /* estrutura consolidada (view-model único) */
+  .strat{background:var(--panel);border:1px solid var(--border);border-left:4px solid var(--border);border-radius:10px;overflow:hidden}
+  .strat.g{border-left-color:var(--green)} .strat.a{border-left-color:var(--amber)} .strat.r{border-left-color:var(--red)}
+  .strat-head{display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer;user-select:none}
+  .strat-head .name{font-weight:700;color:var(--cyan2)}
+  .strat-head .pl{margin-left:auto;font-size:18px;font-weight:700}
+  .strat-metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;padding:0 16px 14px}
+  .metric{background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:10px}
+  .metric .k{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.5px}
+  .metric .v{font-size:17px;font-weight:700;margin-top:3px}
+  .metric .sub{color:var(--muted);font-size:10px;margin-top:2px}
+  .prog{height:5px;background:var(--border);border-radius:3px;overflow:hidden;margin-top:8px}
+  .prog>i{display:block;height:100%;background:var(--cyan)}
+  .strat-body{padding:0 16px 16px;display:none;border-top:1px solid var(--border);margin-top:2px}
+  .strat.open .strat-body{display:block}
+  .caret{transition:transform .15s} .strat.open .caret{transform:rotate(90deg)}
+  table{width:100%;border-collapse:collapse;font-size:12px;margin-top:10px}
+  th,td{text-align:right;padding:6px 8px;border-bottom:1px solid var(--border)}
+  th{color:var(--muted);font-weight:500;text-transform:uppercase;font-size:10px}
+  td:first-child,th:first-child{text-align:left}
+  .greeks{display:flex;gap:18px;margin-top:12px;flex-wrap:wrap}
+  .greeks div{color:var(--muted);font-size:11px}
+  .greeks b{color:var(--txt);font-size:15px;display:block}
+  .trigger{background:rgba(232,85,107,.06);border:1px solid rgba(232,85,107,.2);border-radius:8px;padding:10px;margin-top:12px;font-size:12px}
+
+  /* payoff */
+  canvas{width:100%;height:300px;display:block;background:var(--panel2);border-radius:8px}
+  .legend{display:flex;gap:16px;font-size:11px;color:var(--muted);margin-top:8px;flex-wrap:wrap}
+  .legend i{display:inline-block;width:14px;height:3px;vertical-align:middle;margin-right:5px}
+
+  .section-title{color:var(--muted);font-size:12px;letter-spacing:1px;text-transform:uppercase;padding:4px 0}
+  .note{background:rgba(79,209,255,.06);border:1px solid rgba(79,209,255,.2);border-radius:8px;padding:12px;font-size:12px;color:var(--muted)}
+  .note b{color:var(--cyan2)}
+  /* MELHORIA 1: badge de IV corrompida */
+  .iv-bad{color:var(--muted);font-style:italic}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <span class="logo">TRADING DESK</span>
+    <span class="tag">protótipo · melhorias UI/UX + correções</span>
+    <span class="spot">R$ 162,74 <span class="chip down">−0,86%</span></span>
+  </header>
+
+  <!-- ============ CARDS DE TOPO (layout corrigido) ============ -->
+  <div class="grid">
+    <div class="card">
+      <div class="lbl">BOVA11 · Spot</div>
+      <div class="kv"><span class="k">Último</span><span class="v">R$ 162,74</span></div>
+      <div class="kv"><span class="k">Abertura</span><span class="v">R$ 163,73</span></div>
+      <div class="kv"><span class="k">Máximo</span><span class="v green">R$ 164,11</span></div>
+      <div class="kv"><span class="k">Mínimo</span><span class="v red">R$ 162,40</span></div>
+      <div class="kv"><span class="k">Volume</span><span class="v">121,5 M</span></div>
+    </div>
+
+    <div class="card">
+      <div class="lbl">P&amp;L · Estratégias</div>
+      <div class="big green" id="plTotal">+R$ 2.690,00</div>
+      <div class="kv"><span class="k">% do capital</span><span class="v cyan" id="plPct">+0,22%</span></div>
+      <div class="kv"><span class="k">Estruturas</span><span class="v">2</span></div>
+      <div class="kv"><span class="k">Pernas abertas</span><span class="v">3</span></div>
+    </div>
+
+    <div class="card">
+      <!-- MELHORIA 1: IV agregada normalizada por função única -->
+      <div class="lbl">Volatilidade Implícita · 1A</div>
+      <div class="big cyan">19,66%</div>
+      <div class="kv"><span class="k">HV 20d</span><span class="v">17,66%</span></div>
+      <div class="kv"><span class="k">IV / HV</span><span class="v amber">1,11 · bom</span></div>
+      <div class="kv"><span class="k">IV Rank</span><span class="v">31,9</span></div>
+      <div class="kv"><span class="k">IV Percentil</span><span class="v">45,6</span></div>
+    </div>
+
+    <div class="card">
+      <!-- MELHORIA 6: risco em desvios-padrão -->
+      <div class="lbl">Cenário de Estresse · ±σ</div>
+      <div class="kv"><span class="k">Move ±1σ (5d)</span><span class="v">R$ 158,23 / 167,25</span></div>
+      <div class="kv"><span class="k">P&amp;L em −2σ</span><span class="v red" id="s2n">−R$ 9.400</span></div>
+      <div class="kv"><span class="k">P&amp;L em −1σ</span><span class="v green" id="s1n">+R$ 1.850</span></div>
+      <div class="kv"><span class="k">P&amp;L em +1σ</span><span class="v green" id="s1p">+R$ 2.480</span></div>
+      <div class="kv"><span class="k">P&amp;L em +2σ</span><span class="v red" id="s2p">−R$ 12.100</span></div>
+    </div>
+  </div>
+
+  <!-- ============ PAYOFF anotado ============ -->
+  <div class="card">
+    <div class="section-title">Payoff · Consolidado</div>
+    <canvas id="payoff" width="1200" height="300"></canvas>
+    <div class="legend">
+      <span><i style="background:#4fd1ff"></i>No vencimento</span>
+      <span><i style="background:#e8b23a;border-top:1px dashed"></i>Hoje</span>
+      <span><i style="background:#e8e8e8"></i>Spot atual R$ 162,74</span>
+      <span><i style="background:rgba(46,194,106,.4)"></i>Faixa de lucro (breakevens)</span>
+    </div>
+  </div>
+
+  <!-- ============ ESTRUTURAS (view-model único, sem redundância) ============ -->
+  <div class="section-title">Minhas estruturas · decisão consolidada</div>
+  <div id="strategies" style="display:flex;flex-direction:column;gap:12px"></div>
+
+  <!-- ============ CADEIA com IV corrigida ============ -->
+  <div class="card">
+    <div class="section-title">Cadeia · IV normalizada + sanity check (venc. 21/ago · 5du)</div>
+    <table id="chain">
+      <thead><tr><th>Ticker</th><th>Bid</th><th>Ask</th><th>Δ</th><th>Strike</th><th>IV bruta (API)</th><th>IV corrigida</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <div class="note" style="margin-top:12px">
+      <b>Correção da IV:</b> uma única função <code>normIvPct()</code> trata a escala de forma determinística
+      (fração vs. percentual) e um <b>sanity check</b> descarta valores implausíveis (0 ou &gt;150% em índice),
+      exibindo <span class="iv-bad">—</span> em vez do lixo do solver da API. O snapshot passa a usar o mesmo caminho.
+    </div>
+  </div>
+
+  <div class="note">
+    <b>Nota de segurança:</b> este protótipo não pede nem armazena chave de API. Se for integrar o chat,
+    mova a chamada para um backend/proxy — nunca deixe a chave da Anthropic num input do cliente.
+  </div>
+</div>
+
+<script>
+/* ================================================================
+   MELHORIA 1 — normalização de IV única e determinística
+   ================================================================ */
+function normIvPct(raw){
+  if(raw == null || !isFinite(raw)) return null;
+  // escala: <3 é fração (0.1977 -> 19.77); senão já é percentual (19.77)
+  let pct = raw < 3 ? raw * 100 : raw;
+  // sanity check: IV de índice fora de 5%–150% (ou zero) é lixo do solver
+  if(pct <= 0 || pct < 5 || pct > 150) return null;
+  return pct;
+}
+function fmtIv(pct){ return pct == null ? '<span class="iv-bad">—</span>' : pct.toFixed(1)+'%'; }
+
+/* ================================================================
+   MELHORIA 2 — VIEW-MODEL ÚNICO por estrutura
+   Todas as seções leem daqui; nada recalcula por conta própria.
+   ================================================================ */
+const CAPITAL = 1217000;
+const spot = 162.74, ivSpot = 0.1966, dteUteis = 43;
+
+const rawStrategies = [
+  { name:'strangle 152-180 out', dte:43,
+    legs:[
+      {tk:'BOVAJ36', tipo:'CALL', k:180, qtd:4000, ent:2.68, ult:1.87, bid:1.87, ask:1.89},
+      {tk:'BOVAV152',tipo:'PUT',  k:152, qtd:4000, ent:1.45, ult:1.67, bid:1.66, ask:1.68},
+    ],
+    creditoTotal:16520, gregas:{d:309,t:285,g:-141,v:-1249},
+    triggers:[ {leg:'PUT K152', delta:19, at:149.33}, {leg:'CALL K180', delta:11, at:174.66} ],
+    breakevens:[147.95,184.09] },
+  { name:'vendal call seca 170 out', dte:43,
+    legs:[ {tk:'BOVAJ17', tipo:'CALL', k:170, qtd:300, ent:6.04, ult:4.51, bid:4.51, ask:4.54} ],
+    creditoTotal:1812, gregas:{d:-92,t:16,g:-8,v:-71},
+    triggers:[ {leg:'CALL K170', delta:31, at:164.85} ],
+    breakevens:[176.13] }
+];
+
+function buildViewModel(s){
+  const pl = s.legs.reduce((a,l)=> a + (l.ent - l.ult)*l.qtd, 0);
+  const capturado = Math.max(0, pl / s.creditoTotal);
+  // distância percentual e em desvios-padrão até o BE mais próximo
+  const nearestBE = s.breakevens.reduce((b,x)=> Math.abs(x-spot)<Math.abs(b-spot)?x:b, s.breakevens[0]);
+  const distPct = Math.abs(nearestBE-spot)/spot;
+  const sigma = ivSpot*Math.sqrt(dteUteis/252);           // 1σ até o venc.
+  const distSigma = distPct/sigma;
+  // gatilho mais próximo -> % do caminho andado
+  const trig = s.triggers.reduce((b,t)=> Math.abs(t.at-spot)<Math.abs(b.at-spot)?t:b, s.triggers[0]);
+  const pathToTrig = 1 - Math.min(1, Math.abs(trig.at-spot)/Math.abs(trig.at - spot + (spot*0.06)));
+  // MELHORIA 3 — status semafórico determinístico
+  let status='AGUARDAR', cls='g';
+  const maxDelta = Math.max(...s.triggers.map(t=>t.delta));
+  if(maxDelta>=42 || distSigma<0.8){ status='ATENÇÃO'; cls='a'; }
+  if(maxDelta>=48 || capturado>=0.65){ status = maxDelta>=48 ? 'ROLAR' : 'DESMONTAR'; cls='r'; }
+  const thetaPctCred = s.gregas.t / (s.creditoTotal*(1-capturado)) * 100;
+  return {...s, pl, capturado, distPct, distSigma, nearestBE, thetaPctCred, status, cls,
+          plPctCap: pl/CAPITAL*100, trig};
+}
+const VM = rawStrategies.map(buildViewModel);
+
+/* ---- render estruturas ---- */
+const fmtR = v => (v<0?'−':'+')+'R$ '+Math.abs(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const clsColor = {g:'green',a:'amber',r:'red'};
+document.getElementById('strategies').innerHTML = VM.map((v,i)=>`
+  <div class="strat ${v.cls}" id="st${i}">
+    <div class="strat-head" onclick="document.getElementById('st${i}').classList.toggle('open')">
+      <span class="caret">▸</span>
+      <span class="name">${v.name}</span>
+      <span class="status st-${v.cls}"><span class="dot ${clsColor[v.cls]}"></span>${v.status}</span>
+      <span class="pl ${v.pl>=0?'green':'red'}">${fmtR(v.pl)}</span>
+    </div>
+    <div class="strat-metrics">
+      <div class="metric"><div class="k">DTE úteis</div><div class="v">${v.dte}</div></div>
+      <div class="metric"><div class="k">Capturado</div><div class="v">${(v.capturado*100).toFixed(0)}%</div>
+        <div class="prog"><i style="width:${Math.min(100,v.capturado*100)}%"></i></div></div>
+      <div class="metric"><div class="k">Dist. BE</div><div class="v">${(v.distPct*100).toFixed(1)}%</div>
+        <div class="sub">${v.distSigma.toFixed(2)}σ</div></div>
+      <div class="metric"><div class="k">θ / crédito rest.</div><div class="v">${v.thetaPctCred.toFixed(1)}%<span class="sub">/dia</span></div></div>
+      <div class="metric"><div class="k">P&amp;L / capital</div><div class="v ${v.pl>=0?'green':'red'}">${(v.plPctCap>=0?'+':'')+v.plPctCap.toFixed(3)}%</div></div>
+    </div>
+    <div class="strat-body">
+      <table>
+        <thead><tr><th>Perna</th><th>Qtd</th><th>Entrada</th><th>Último</th><th>P&amp;L</th></tr></thead>
+        <tbody>${v.legs.map(l=>{const p=(l.ent-l.ult)*l.qtd;return`
+          <tr><td>${l.tk} ${l.tipo} K${l.k}</td><td>V ${l.qtd}</td><td>${l.ent.toFixed(2)}</td><td>${l.ult.toFixed(2)}</td>
+          <td class="${p>=0?'green':'red'}">${fmtR(p)}</td></tr>`}).join('')}</tbody>
+      </table>
+      <div class="greeks">
+        <div>Δ Delta<b>${v.gregas.d>=0?'+':''}${v.gregas.d}</b></div>
+        <div>Θ Theta/d<b>+${v.gregas.t}</b></div>
+        <div>Γ Gamma<b>${v.gregas.g}</b></div>
+        <div>ν Vega<b>${v.gregas.v}</b></div>
+      </div>
+      <div class="trigger">
+        Gatilho mais próximo: <b>${v.trig.leg}</b> (${v.trig.delta}Δ) dispara em <b>R$ ${v.trig.at.toFixed(2)}</b> ·
+        breakeven ${v.nearestBE.toFixed(2)} a <b>${v.distSigma.toFixed(2)}σ</b> do spot.
+      </div>
+    </div>
+  </div>`).join('');
+
+/* atualiza cards de topo a partir do MESMO view-model (sem divergência) */
+const plTot = VM.reduce((a,v)=>a+v.pl,0);
+document.getElementById('plTotal').textContent = fmtR(plTot).replace('+R$','+R$ ');
+document.getElementById('plPct').textContent = '+'+(plTot/CAPITAL*100).toFixed(3)+'%';
+
+/* cenário de estresse ±σ (delta+gamma consolidados) */
+const gD = VM.reduce((a,v)=>a+v.gregas.d,0), gG = VM.reduce((a,v)=>a+v.gregas.g,0);
+const sig1 = spot*ivSpot*Math.sqrt(5/252);
+function stress(mult){ const dS=mult*sig1; return plTot + gD*dS + 0.5*gG*dS*dS; }
+document.getElementById('s2n').textContent = fmtR(stress(-2));
+document.getElementById('s1n').textContent = fmtR(stress(-1));
+document.getElementById('s1p').textContent = fmtR(stress(1));
+document.getElementById('s2p').textContent = fmtR(stress(2));
+
+/* ================================================================
+   MELHORIA 5 — payoff com spot + breakevens + faixa de lucro
+   ================================================================ */
+function payoffAt(S){
+  let v = 0;
+  VM.forEach(vm=>vm.legs.forEach(l=>{
+    const intr = l.tipo==='CALL' ? Math.max(0,S-l.k) : Math.max(0,l.k-S);
+    v += (l.ent - intr)*l.qtd; // vendido: recebe prêmio, paga intrínseco
+  }));
+  return v;
+}
+(function drawPayoff(){
+  const cv=document.getElementById('payoff'), ctx=cv.getContext('2d');
+  const W=cv.width,H=cv.height, lo=135,hi=195, pad=40;
+  const xs=S=>pad+(S-lo)/(hi-lo)*(W-2*pad);
+  let vals=[]; for(let S=lo;S<=hi;S+=0.5) vals.push(payoffAt(S));
+  const vmax=Math.max(...vals), vmin=Math.min(...vals);
+  const ys=v=>H-pad-(v-vmin)/(vmax-vmin)*(H-2*pad);
+  ctx.clearRect(0,0,W,H);
+  // breakevens (onde payoff cruza 0) e faixa de lucro
+  let bes=[]; for(let S=lo;S<hi;S+=0.1){ if(payoffAt(S)*payoffAt(S+0.1)<0) bes.push(S); }
+  if(bes.length>=2){ ctx.fillStyle='rgba(46,194,106,.12)';
+    ctx.fillRect(xs(bes[0]),pad,xs(bes[bes.length-1])-xs(bes[0]),H-2*pad); }
+  // eixo zero
+  ctx.strokeStyle='#2a3542'; ctx.beginPath(); ctx.moveTo(pad,ys(0)); ctx.lineTo(W-pad,ys(0)); ctx.stroke();
+  // curva vencimento
+  ctx.strokeStyle='#4fd1ff'; ctx.lineWidth=2; ctx.beginPath();
+  vals.forEach((v,i)=>{const S=lo+i*0.5; i?ctx.lineTo(xs(S),ys(v)):ctx.moveTo(xs(S),ys(v));}); ctx.stroke();
+  // spot atual
+  ctx.strokeStyle='#e8e8e8'; ctx.setLineDash([4,4]); ctx.beginPath();
+  ctx.moveTo(xs(spot),pad); ctx.lineTo(xs(spot),H-pad); ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle='#e8e8e8'; ctx.font='11px monospace'; ctx.fillText('spot 162,74',xs(spot)+4,pad+12);
+  // marca breakevens
+  ctx.fillStyle='#2ec26a';
+  bes.forEach(be=>{ ctx.beginPath(); ctx.arc(xs(be),ys(0),4,0,7); ctx.fill();
+    ctx.fillText('BE '+be.toFixed(1),xs(be)-18,ys(0)+18); });
+})();
+
+/* ================================================================
+   cadeia demonstrando a correção de IV (inclui valores-lixo da API)
+   ================================================================ */
+const chainRows = [
+  {tk:'BOVAH600',bid:102.24,ask:103.82,d:1.00,k:60, ivRaw:309.125}, // lixo -> —
+  {tk:'BOVAH162',bid:2.22, ask:2.24, d:0.57,k:162,ivRaw:19.865},
+  {tk:'BOVAH163',bid:1.66, ask:1.68, d:0.48,k:163,ivRaw:19.771},
+  {tk:'BOVAT163',bid:1.50, ask:1.53, d:-0.52,k:163,ivRaw:14.877},
+  {tk:'BOVAT167',bid:4.21, ask:4.23, d:-0.82,k:167,ivRaw:0},       // zero -> —
+  {tk:'BOVAT169',bid:5.98, ask:6.04, d:-0.91,k:169,ivRaw:16.199},
+  {tk:'BOVAX_frac',bid:0.5,ask:0.6, d:0.20,k:158,ivRaw:0.2015},    // fração -> 20,2%
+];
+document.querySelector('#chain tbody').innerHTML = chainRows.map(r=>`
+  <tr><td>${r.tk}</td><td>${r.bid.toFixed(2)}</td><td>${r.ask.toFixed(2)}</td>
+  <td>${r.d.toFixed(2)}</td><td>${r.k.toFixed(2)}</td>
+  <td class="muted">${r.ivRaw}</td><td>${fmtIv(normIvPct(r.ivRaw))}</td></tr>`).join('');
+</script>
+</body>
+</html>
