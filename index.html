@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Trading Desk · BOVA11 · v2.1</title>
+<title>Trading Desk · BOVA11 · v2.2</title>
 <style>
   :root{
     --bg:#0b0f14;--panel:#121821;--panel2:#0e141c;--border:#1e2733;
     --txt:#c9d4e0;--muted:#6b7a8d;--cyan:#38e1e1;--cyan2:#4fd1ff;
     --green:#2ec26a;--amber:#e8b23a;--red:#e8556b;
-    --mono:"SF Mono",ui-monospace,"Cascadia Code",Consolas,monospace;
+    --mono:ui-monospace,Consolas,monospace;
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--txt);font-family:var(--mono);font-size:14px;line-height:1.45;padding:16px}
@@ -20,7 +20,7 @@
   #gate h2{color:var(--cyan);font-size:18px;margin:0 0 6px}
   #gate p{color:var(--muted);font-size:12px;margin:0 0 18px}
   #gate .ver{color:var(--muted);font-size:11px;margin-top:16px;text-align:center}
-  input,select{background:var(--panel2);border:1px solid var(--border);color:var(--txt);font-family:var(--mono);font-size:14px;padding:9px 11px;border-radius:7px;width:100%}
+  input{background:var(--panel2);border:1px solid var(--border);color:var(--txt);font-family:var(--mono);font-size:14px;padding:9px 11px;border-radius:7px;width:100%}
   button{background:var(--cyan);color:#062;border:none;font-family:var(--mono);font-weight:700;padding:10px 16px;border-radius:7px;cursor:pointer;font-size:13px}
   button.ghost{background:transparent;border:1px solid var(--border);color:var(--txt)}
   #gateErr{color:var(--red);font-size:11px;margin-top:8px;min-height:14px}
@@ -58,7 +58,7 @@
   .prog{height:5px;background:var(--border);border-radius:3px;overflow:hidden;margin-top:8px}.prog>i{display:block;height:100%;background:var(--cyan)}
   .strat-body{padding:0 16px 16px;display:none;border-top:1px solid var(--border);margin-top:2px}
   .strat.open .strat-body{display:block}
-  .caret{transition:transform .15s;display:inline-block}.strat.open .caret{transform:rotate(90deg)}
+  .caret{display:inline-block;transition:transform .15s}.strat.open .caret{transform:rotate(90deg)}
   table{width:100%;border-collapse:collapse;font-size:12px;margin-top:10px}
   th,td{text-align:right;padding:6px 8px;border-bottom:1px solid var(--border)}
   th{color:var(--muted);font-weight:500;text-transform:uppercase;font-size:10px}
@@ -75,7 +75,7 @@
   .bias-bar{display:flex;height:10px;border-radius:5px;overflow:hidden;margin:10px 0}
   .bias-bar>i{flex:1}
   .ind{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);font-size:12px}
-  .ind .n{color:var(--txt)}.ind .d{color:var(--muted);font-size:11px}
+  .ind .d{color:var(--muted);font-size:11px}
   .badge{font-size:10px;padding:1px 7px;border-radius:4px}
   .b-alta{background:rgba(46,194,106,.15);color:var(--green)}.b-baixa{background:rgba(232,85,107,.15);color:var(--red)}.b-neu{background:rgba(107,122,141,.2);color:var(--muted)}
   #snapshot{background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:14px;font-size:11px;white-space:pre-wrap;color:var(--txt);max-height:340px;overflow:auto;margin-top:10px}
@@ -93,14 +93,14 @@
       <button onclick="unlock()">Entrar →</button>
       <button class="ghost" onclick="document.getElementById('apiKey').value='demo';unlock()">Usar dados demo</button>
     </div>
-    <div class="ver">Trading Desk · v2.1</div>
+    <div class="ver">Trading Desk · v2.2</div>
   </div>
 </div>
 
 <div class="wrap hidden" id="app">
   <header>
     <span class="logo">TRADING DESK</span>
-    <span class="tag">BOVA11 · v2.1</span>
+    <span class="tag">BOVA11 · v2.2</span>
     <span class="spot">R$ 162,74 <span class="chip down">−0,86%</span></span>
   </header>
 
@@ -108,8 +108,7 @@
     <div class="ctl"><label>Capital (R$)</label><input id="capIn" value="1217000" inputmode="numeric"></div>
     <div class="ctl"><label>VXBR</label><input id="vxbrIn" value="17.44" inputmode="decimal"></div>
     <div class="ctl"><label>&nbsp;</label><button class="ghost" onclick="recompute()">↻ Recalcular</button></div>
-    <div class="ctl"><label>&nbsp;</label>
-      <span class="info">Orç. Nível B (10%): <b id="orcInfo">R$ 121.700</b> · Zona VXBR: <b id="zonaInfo" class="green">até 2/3 da posição máx</b></span></div>
+    <div class="ctl"><label>&nbsp;</label><span class="info">Orç. Nível B (10%): <b id="orcInfo">R$ 121.700</b></span></div>
   </div>
 
   <div class="grid">
@@ -133,7 +132,6 @@
       <div class="kv"><span class="k">HV 20d</span><span class="v">17,66%</span></div>
       <div class="kv"><span class="k">IV / HV</span><span class="v amber">1,11 · bom</span></div>
       <div class="kv"><span class="k">IV Rank</span><span class="v">31,9</span></div>
-      <div class="kv"><span class="k">IV Percentil</span><span class="v">45,6</span></div>
     </div>
     <div class="card">
       <div class="lbl">Cenário de Estresse · ±σ</div>
@@ -159,30 +157,43 @@
   <div class="section-title">Minhas estruturas · decisão consolidada</div>
   <div id="strategies" style="display:flex;flex-direction:column;gap:12px"></div>
 
+  <!-- Viés Direcional: estático, sem JS -->
   <div class="card">
     <div class="section-title">Viés Direcional · BOVA11</div>
-    <div style="font-size:20px;font-weight:700" class="muted">NEUTRO <span style="font-size:12px;font-weight:400">— prefira venda de volatilidade (strangle/straddle) ou aguarde</span></div>
+    <div style="font-size:20px;font-weight:700" class="muted">NEUTRO <span style="font-size:12px;font-weight:400">— prefira venda de volatilidade ou aguarde</span></div>
     <div class="bias-bar"><i style="background:var(--red)"></i><i style="background:var(--muted)"></i><i style="background:var(--green)"></i></div>
     <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted)"><span>BAIXA (venda call)</span><span>NEUTRO</span><span>ALTA (venda put)</span></div>
     <div style="margin-top:12px">
-      <div class="ind"><span><span class="n">1. Médias Móveis</span> <span class="d">entrelaçadas — sem tendência</span></span><span class="badge b-neu">NEUTRO · peso 4</span></div>
-      <div class="ind"><span><span class="n">2. RSI 14</span> <span class="d">RSI 26 — sobrevendido</span></span><span class="badge b-alta">ALTA · peso 3</span></div>
-      <div class="ind"><span><span class="n">3. MACD</span> <span class="d">abaixo da linha de sinal e negativo</span></span><span class="badge b-baixa">BAIXA · peso 2</span></div>
-      <div class="ind"><span><span class="n">4. Distância da MM20</span> <span class="d">4,8% — normal</span></span><span class="badge b-neu">NEUTRO · peso 1</span></div>
+      <div class="ind"><span>1. Médias Móveis <span class="d">entrelaçadas — sem tendência</span></span><span class="badge b-neu">NEUTRO · peso 4</span></div>
+      <div class="ind"><span>2. RSI 14 <span class="d">RSI 26 — sobrevendido</span></span><span class="badge b-alta">ALTA · peso 3</span></div>
+      <div class="ind"><span>3. MACD <span class="d">abaixo da linha de sinal</span></span><span class="badge b-baixa">BAIXA · peso 2</span></div>
+      <div class="ind"><span>4. Distância da MM20 <span class="d">4,8% — normal</span></span><span class="badge b-neu">NEUTRO · peso 1</span></div>
     </div>
     <div style="font-size:11px;color:var(--muted);margin-top:10px">Spot R$162,74 · MM20 R$170,88 · MM50 R$169,67 · RSI 26 · MACD −1,68</div>
   </div>
 
+  <!-- Radar de Oportunidades: estático, sem JS -->
   <div class="card">
     <div class="section-title">Radar de Oportunidades · venda de volatilidade (ordenado por crédito)</div>
     <table>
       <thead><tr><th>Estrutura</th><th>Venc.</th><th>Pernas</th><th>Créd/ct</th><th>POP</th><th>Breakevens</th></tr></thead>
-      <tbody id="radarVol"></tbody>
+      <tbody>
+        <tr><td>Straddle ATM</td><td>18/dez/26·87du</td><td>CK164 PK164</td><td class="green">R$19,29</td><td class="red">0%</td><td>144,71 / 183,29</td></tr>
+        <tr><td>Straddle ATM</td><td>16/out/26·43du</td><td>CK163 PK163</td><td class="green">R$12,70</td><td class="red">0%</td><td>150,30 / 175,70</td></tr>
+        <tr><td>Strangle Δ30</td><td>18/dez/26·87du</td><td>CK174 PK155</td><td class="green">R$10,47</td><td class="amber">38%</td><td>144,53 / 184,47</td></tr>
+        <tr><td>Strangle Δ22</td><td>16/out/26·43du</td><td>CK174 PK153</td><td class="green">R$5,08</td><td class="green">57%</td><td>147,91 / 179,09</td></tr>
+        <tr><td>Strangle Δ15</td><td>16/out/26·43du</td><td>CK178 PK150</td><td class="green">R$3,60</td><td class="green">71%</td><td>146,40 / 181,60</td></tr>
+      </tbody>
     </table>
     <div class="section-title" style="margin-top:16px">Direcionais · venda de put (viés alta) e call (viés baixa)</div>
     <table>
       <thead><tr><th>Tipo</th><th>Δ</th><th>Venc.</th><th>Strike</th><th>Créd</th><th>POP</th><th>Ret.aa</th><th>BE</th></tr></thead>
-      <tbody id="radarDir"></tbody>
+      <tbody>
+        <tr><td>Venda PUT</td><td>0,29</td><td>16/out/26·43du</td><td>156</td><td class="green">R$2,54</td><td>71%</td><td class="cyan">9,7%</td><td>153,46</td></tr>
+        <tr><td>Venda PUT</td><td>0,19</td><td>16/out/26·43du</td><td>152</td><td class="green">R$1,67</td><td>81%</td><td class="cyan">6,5%</td><td>150,33</td></tr>
+        <tr><td>Venda CALL</td><td>0,31</td><td>16/out/26·43du</td><td>170</td><td class="green">R$4,54</td><td>69%</td><td class="cyan">16,1%</td><td>174,53</td></tr>
+        <tr><td>Venda CALL</td><td>0,19</td><td>16/out/26·43du</td><td>175</td><td class="green">R$2,95</td><td>81%</td><td class="cyan">10,0%</td><td>177,94</td></tr>
+      </tbody>
     </table>
   </div>
 
@@ -197,13 +208,18 @@
 
 <script>
 function unlock(){
-  var el=document.getElementById('apiKey');
-  var k=el.value.trim();
-  if(!k){ document.getElementById('gateErr').textContent='Informe uma chave (ou use "dados demo").'; return; }
-  window._apiKey=k;
-  document.getElementById('gate').classList.add('hidden');
-  document.getElementById('app').classList.remove('hidden');
-  try{ recompute(); }catch(e){ console.error(e); alert('Erro ao carregar: '+e.message); }
+  try{
+    var el=document.getElementById('apiKey');
+    var k=el.value.trim();
+    if(!k){ document.getElementById('gateErr').textContent='Informe uma chave (ou use "dados demo").'; return; }
+    window._apiKey=k;
+    document.getElementById('gate').classList.add('hidden');
+    document.getElementById('app').classList.remove('hidden');
+    recompute();
+  }catch(e){
+    document.getElementById('gateErr').textContent='Erro: '+e.message;
+    console.error(e);
+  }
 }
 
 function normIvPct(raw){
@@ -213,8 +229,7 @@ function normIvPct(raw){
   return pct;
 }
 
-var CAPITAL=1217000, VXBR=17.44;
-var spot=162.74, ivSpot=0.1966, dteUteis=43;
+var CAPITAL=1217000, spot=162.74, ivSpot=0.1966, dteUteis=43;
 
 var rawStrategies=[
  {name:'strangle 152-180 out',dte:43,
@@ -230,47 +245,40 @@ var rawStrategies=[
   breakevens:[176.13]}
 ];
 
-var radarVolData=[
- {estrutura:'Straddle ATM',venc:'18/dez/26 · 87du',pernas:'CK164 PK164',cred:19.29,pop:0,be:'144,71 / 183,29'},
- {estrutura:'Straddle ATM',venc:'16/out/26 · 43du',pernas:'CK163 PK163',cred:12.70,pop:0,be:'150,30 / 175,70'},
- {estrutura:'Strangle Δ30',venc:'18/dez/26 · 87du',pernas:'CK174 PK155',cred:10.47,pop:38,be:'144,53 / 184,47'},
- {estrutura:'Strangle Δ22',venc:'16/out/26 · 43du',pernas:'CK174 PK153',cred:5.08,pop:57,be:'147,91 / 179,09'},
- {estrutura:'Strangle Δ15',venc:'16/out/26 · 43du',pernas:'CK178 PK150',cred:3.60,pop:71,be:'146,40 / 181,60'}
-];
-var radarDirData=[
- {tipo:'Venda PUT',delta:0.29,venc:'16/out/26·43du',strike:156,cred:2.54,pop:71,ret:9.7,be:153.46},
- {tipo:'Venda PUT',delta:0.19,venc:'16/out/26·43du',strike:152,cred:1.67,pop:81,ret:6.5,be:150.33},
- {tipo:'Venda CALL',delta:0.31,venc:'16/out/26·43du',strike:170,cred:4.54,pop:69,ret:16.1,be:174.53},
- {tipo:'Venda CALL',delta:0.19,venc:'16/out/26·43du',strike:175,cred:2.95,pop:81,ret:10.0,be:177.94}
-];
-
 var VM=[];
 
 function buildViewModel(s){
-  var pl=0; for(var i=0;i<s.legs.length;i++){ var l=s.legs[i]; pl += (l.ent-l.ult)*l.qtd; }
+  var pl=0;
+  for(var i=0;i<s.legs.length;i++){ pl += (s.legs[i].ent-s.legs[i].ult)*s.legs[i].qtd; }
   var capturado=Math.max(0, pl/s.creditoTotal);
   var nearestBE=s.breakevens[0];
-  for(var j=1;j<s.breakevens.length;j++){ if(Math.abs(s.breakevens[j]-spot)<Math.abs(nearestBE-spot)) nearestBE=s.breakevens[j]; }
+  for(var j=1;j<s.breakevens.length;j++){
+    if(Math.abs(s.breakevens[j]-spot)<Math.abs(nearestBE-spot)) nearestBE=s.breakevens[j];
+  }
   var distPct=Math.abs(nearestBE-spot)/spot;
   var sigma=ivSpot*Math.sqrt(dteUteis/252);
   var distSigma=distPct/sigma;
   var trig=s.triggers[0];
-  for(var k=1;k<s.triggers.length;k++){ if(Math.abs(s.triggers[k].at-spot)<Math.abs(trig.at-spot)) trig=s.triggers[k]; }
-  var maxDelta=0; for(var m=0;m<s.triggers.length;m++){ if(s.triggers[m].delta>maxDelta) maxDelta=s.triggers[m].delta; }
+  for(var k=1;k<s.triggers.length;k++){
+    if(Math.abs(s.triggers[k].at-spot)<Math.abs(trig.at-spot)) trig=s.triggers[k];
+  }
+  var maxDelta=0;
+  for(var m=0;m<s.triggers.length;m++){ if(s.triggers[m].delta>maxDelta) maxDelta=s.triggers[m].delta; }
   var status='AGUARDAR', cls='g';
   if(maxDelta>=42 || distSigma<0.8){ status='ATENÇÃO'; cls='a'; }
-  if(maxDelta>=48 || capturado>=0.65){ status = maxDelta>=48 ? 'ROLAR' : 'DESMONTAR'; cls='r'; }
+  if(maxDelta>=48 || capturado>=0.65){ status = (maxDelta>=48) ? 'ROLAR' : 'DESMONTAR'; cls='r'; }
   var thetaPctCred = s.gregas.t / (s.creditoTotal*(1-capturado)) * 100;
   return {
     name:s.name, dte:s.dte, legs:s.legs, creditoTotal:s.creditoTotal, gregas:s.gregas,
-    triggers:s.triggers, breakevens:s.breakevens,
-    pl:pl, capturado:capturado, distPct:distPct, distSigma:distSigma,
-    nearestBE:nearestBE, thetaPctCred:thetaPctCred, status:status, cls:cls,
-    plPctCap: pl/CAPITAL*100, trig:trig
+    triggers:s.triggers, breakevens:s.breakevens, pl:pl, capturado:capturado,
+    distPct:distPct, distSigma:distSigma, nearestBE:nearestBE, thetaPctCred:thetaPctCred,
+    status:status, cls:cls, plPctCap: pl/CAPITAL*100, trig:trig
   };
 }
 
-function fmtR(v){ return (v<0?'−':'+')+'R$ '+Math.abs(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function fmtR(v){
+  return (v<0?'−':'+')+'R$ '+Math.abs(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
 var clsColor={g:'green',a:'amber',r:'red'};
 
 function renderStrategies(){
@@ -279,29 +287,28 @@ function renderStrategies(){
     var v=VM[i];
     var legsHtml='';
     for(var j=0;j<v.legs.length;j++){
-      var l=v.legs[j]; var p=(l.ent-l.ult)*l.qtd;
+      var l=v.legs[j];
+      var p=(l.ent-l.ult)*l.qtd;
       legsHtml += '<tr><td>'+l.tk+' '+l.tipo+' K'+l.k+'</td><td>V '+l.qtd+'</td><td>'+l.ent.toFixed(2)+'</td><td>'+l.ult.toFixed(2)+'</td><td class="'+(p>=0?'green':'red')+'">'+fmtR(p)+'</td></tr>';
     }
-    html += ''+
-    '<div class="strat '+v.cls+'" id="st'+i+'">'+
-      '<div class="strat-head" onclick="toggleStrat('+i+')">'+
-        '<span class="caret">▸</span><span class="name">'+v.name+'</span>'+
-        '<span class="status st-'+v.cls+'"><span class="dot '+clsColor[v.cls]+'"></span>'+v.status+'</span>'+
-        '<span class="pl '+(v.pl>=0?'green':'red')+'">'+fmtR(v.pl)+'</span>'+
-      '</div>'+
-      '<div class="strat-metrics">'+
-        '<div class="metric"><div class="k">DTE úteis</div><div class="v">'+v.dte+'</div></div>'+
-        '<div class="metric"><div class="k">Capturado</div><div class="v">'+(v.capturado*100).toFixed(0)+'%</div><div class="prog"><i style="width:'+Math.min(100,v.capturado*100)+'%"></i></div></div>'+
-        '<div class="metric"><div class="k">Dist. BE</div><div class="v">'+(v.distPct*100).toFixed(1)+'%</div><div class="sub">'+v.distSigma.toFixed(2)+'σ</div></div>'+
-        '<div class="metric"><div class="k">θ / créd. rest.</div><div class="v">'+v.thetaPctCred.toFixed(1)+'%<span class="sub">/dia</span></div></div>'+
-        '<div class="metric"><div class="k">P&L / capital</div><div class="v '+(v.pl>=0?'green':'red')+'">'+(v.plPctCap>=0?'+':'')+v.plPctCap.toFixed(3)+'%</div></div>'+
-      '</div>'+
-      '<div class="strat-body">'+
-        '<table><thead><tr><th>Perna</th><th>Qtd</th><th>Entrada</th><th>Último</th><th>P&L</th></tr></thead><tbody>'+legsHtml+'</tbody></table>'+
-        '<div class="greeks"><div>Δ Delta<b>'+(v.gregas.d>=0?'+':'')+v.gregas.d+'</b></div><div>Θ Theta/d<b>+'+v.gregas.t+'</b></div><div>Γ Gamma<b>'+v.gregas.g+'</b></div><div>ν Vega<b>'+v.gregas.v+'</b></div></div>'+
-        '<div class="trigger">Gatilho mais próximo: <b>'+v.trig.leg+'</b> ('+v.trig.delta+'Δ) dispara em <b>R$ '+v.trig.at.toFixed(2)+'</b> · breakeven '+v.nearestBE.toFixed(2)+' a <b>'+v.distSigma.toFixed(2)+'σ</b> do spot.</div>'+
-      '</div>'+
-    '</div>';
+    html += '<div class="strat '+v.cls+'" id="st'+i+'">';
+    html += '<div class="strat-head" onclick="toggleStrat('+i+')">';
+    html += '<span class="caret">▸</span><span class="name">'+v.name+'</span>';
+    html += '<span class="status st-'+v.cls+'"><span class="dot '+clsColor[v.cls]+'"></span>'+v.status+'</span>';
+    html += '<span class="pl '+(v.pl>=0?'green':'red')+'">'+fmtR(v.pl)+'</span>';
+    html += '</div>';
+    html += '<div class="strat-metrics">';
+    html += '<div class="metric"><div class="k">DTE úteis</div><div class="v">'+v.dte+'</div></div>';
+    html += '<div class="metric"><div class="k">Capturado</div><div class="v">'+(v.capturado*100).toFixed(0)+'%</div><div class="prog"><i style="width:'+Math.min(100,v.capturado*100)+'%"></i></div></div>';
+    html += '<div class="metric"><div class="k">Dist. BE</div><div class="v">'+(v.distPct*100).toFixed(1)+'%</div><div class="sub">'+v.distSigma.toFixed(2)+'σ</div></div>';
+    html += '<div class="metric"><div class="k">θ / créd. rest.</div><div class="v">'+v.thetaPctCred.toFixed(1)+'%<span class="sub">/dia</span></div></div>';
+    html += '<div class="metric"><div class="k">P&L / capital</div><div class="v '+(v.pl>=0?'green':'red')+'">'+(v.plPctCap>=0?'+':'')+v.plPctCap.toFixed(3)+'%</div></div>';
+    html += '</div>';
+    html += '<div class="strat-body">';
+    html += '<table><thead><tr><th>Perna</th><th>Qtd</th><th>Entrada</th><th>Último</th><th>P&L</th></tr></thead><tbody>'+legsHtml+'</tbody></table>';
+    html += '<div class="greeks"><div>Δ Delta<b>'+(v.gregas.d>=0?'+':'')+v.gregas.d+'</b></div><div>Θ Theta/d<b>+'+v.gregas.t+'</b></div><div>Γ Gamma<b>'+v.gregas.g+'</b></div><div>ν Vega<b>'+v.gregas.v+'</b></div></div>';
+    html += '<div class="trigger">Gatilho mais próximo: <b>'+v.trig.leg+'</b> ('+v.trig.delta+'Δ) dispara em <b>R$ '+v.trig.at.toFixed(2)+'</b> · breakeven '+v.nearestBE.toFixed(2)+' a <b>'+v.distSigma.toFixed(2)+'σ</b> do spot.</div>';
+    html += '</div></div>';
   }
   document.getElementById('strategies').innerHTML=html;
 }
@@ -309,19 +316,17 @@ function toggleStrat(i){ document.getElementById('st'+i).classList.toggle('open'
 
 var payoffMode='all';
 function payoffAt(S,idx){
-  var list = idx==='all' ? VM : [VM[idx]];
+  var list = (idx==='all') ? VM : [VM[idx]];
   var v=0;
   for(var a=0;a<list.length;a++){
     var vm=list[a];
     for(var b=0;b<vm.legs.length;b++){
       var l=vm.legs[b];
-      var intr = l.tipo==='CALL' ? Math.max(0,S-l.k) : Math.max(0,l.k-S);
+      var intr = (l.tipo==='CALL') ? Math.max(0,S-l.k) : Math.max(0,l.k-S);
       v += (l.ent-intr)*l.qtd;
     }
   }
   return v;
 }
 function renderPayoffTabs(){
-  var html='<button class="'+(payoffMode==='all'?'active':'')+'" onclick="setPayoff(\'all\')">Consolidado</button>';
-  for(var i=0;i<VM.length;i++){
-    html += '<button class="'+(payoffMode===i?'active':'')+
+  var html='<button class="'+(payoffMode==='all'?'active':'')+'" onclick="setPayoff(\'all\')">Consolidado</button
