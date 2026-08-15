@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Trading Desk · BOVA11 · v2.9</title>
+<title>Trading Desk · BOVA11 · v3.1</title>
 <style>
 :root{--bg:#0b0f14;--panel:#121821;--panel2:#0e141c;--border:#1e2733;--txt:#c9d4e0;--muted:#6b7a8d;--cyan:#38e1e1;--cyan2:#4fd1ff;--green:#2ec26a;--amber:#e8b23a;--red:#e8556b;}
 *{box-sizing:border-box}
@@ -106,7 +106,7 @@ canvas{width:100%;height:260px;display:block;background:var(--panel2);border-rad
 <div id="gate">
   <div class="box">
     <h2>Trading Desk</h2>
-    <form id="loginForm" autocomplete="on" onsubmit="event.preventDefault();unlock();">
+    <form id="loginForm" method="post" action="#" target="loginTarget" autocomplete="on" onsubmit="return handleLogin(event)">
       <input type="text" name="username" autocomplete="username" value="oplab" style="position:absolute;opacity:0;height:0;width:0;padding:0;border:0" tabindex="-1" aria-hidden="true">
       <input id="apiKey" name="oplab-token" type="password" placeholder="Cole sua chave da API" autocomplete="current-password">
       <div style="font-size:11px;color:var(--muted);margin-top:6px">Token disponível em <a href="https://go.oplab.com.br/api" target="_blank" rel="noopener" style="color:var(--cyan2)">go.oplab.com.br/api</a></div>
@@ -115,7 +115,8 @@ canvas{width:100%;height:260px;display:block;background:var(--panel2);border-rad
         <button type="submit" style="width:100%;padding:12px 16px">Entrar →</button>
       </div>
     </form>
-    <div class="ver">v2.9</div>
+    <iframe name="loginTarget" style="display:none" title="login target"></iframe>
+    <div class="ver">v3.1</div>
   </div>
 </div>
 
@@ -124,6 +125,7 @@ canvas{width:100%;height:260px;display:block;background:var(--panel2);border-rad
     <span class="logo">TRADING DESK</span>
     <a href="https://gist.github.com/parodibruno/cfb20a7949565880dced5c2830d405a7" target="_blank" rel="noopener" style="font-size:11px;color:var(--cyan2);text-decoration:none;border:1px solid var(--border);border-radius:6px;padding:4px 10px;white-space:nowrap">📖 Manual de Gestão ↗</a>
     <span class="spot">R$ 162,74 <span class="chip">−0,86%</span></span>
+    <button onclick="logout()" style="background:transparent;border:none;color:var(--muted);font-size:11px;padding:4px 6px;font-weight:400;cursor:pointer">Sair</button>
   </header>
 
   <div class="controls">
@@ -331,18 +333,35 @@ VIÉS: NEUTRO (MM20 170,88 · RSI 26 · MACD -1,68)</pre>
 </div>
 
 <script>
-function unlock(){
-  try{
-    var el=document.getElementById('apiKey');
-    var k=el.value.trim();
-    if(!k){ document.getElementById('gateErr').textContent='Informe uma chave (ou use "dados demo").'; return; }
-    window._apiKey=k;
-    document.getElementById('gate').classList.add('hidden');
-    document.getElementById('app').classList.remove('hidden');
-    drawPayoff('all');
-  }catch(e){
-    document.getElementById('gateErr').textContent='Erro: '+e.message;
+function logout(){
+  window._apiKey=null;
+  document.getElementById('app').classList.add('hidden');
+  document.getElementById('gate').classList.remove('hidden');
+  document.getElementById('gateErr').textContent='';
+}
+
+function handleLogin(e){
+  var el=document.getElementById('apiKey');
+  var k=el.value.trim();
+  if(!k){
+    e.preventDefault();
+    document.getElementById('gateErr').textContent='Informe uma chave.';
+    return false;
   }
+  document.getElementById('gateErr').textContent='';
+  window._apiKey=k;
+  // deixa o form submeter de verdade (pro iframe oculto) para o Chrome
+  // reconhecer a submissão e oferecer salvar a senha. Só então troca a tela.
+  setTimeout(function(){
+    try{
+      document.getElementById('gate').classList.add('hidden');
+      document.getElementById('app').classList.remove('hidden');
+      drawPayoff('all');
+    }catch(err){
+      document.getElementById('gateErr').textContent='Erro: '+err.message;
+    }
+  }, 250);
+  return true;
 }
 
 function toggleStrat(i){
