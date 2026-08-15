@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Trading Desk · BOVA11 · v2.6</title>
+<title>Trading Desk · BOVA11 · v2.7</title>
 <style>
 :root{--bg:#0b0f14;--panel:#121821;--panel2:#0e141c;--border:#1e2733;--txt:#c9d4e0;--muted:#6b7a8d;--cyan:#38e1e1;--cyan2:#4fd1ff;--green:#2ec26a;--amber:#e8b23a;--red:#e8556b;}
 *{box-sizing:border-box}
@@ -22,7 +22,10 @@ button.ghost{background:transparent;border:1px solid var(--border);color:var(--t
 header{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
 header .logo{color:var(--cyan);font-weight:700;letter-spacing:1px;font-size:18px}
 header .spot{margin-left:auto;font-size:24px;font-weight:700}
-.chip{font-size:12px;padding:2px 8px;border-radius:4px;background:rgba(232,85,107,.15);color:var(--red)}
+.chip{font-size:14px;padding:3px 9px;border-radius:4px;background:rgba(232,85,107,.15);color:var(--red)}
+@media (max-width:640px){
+  header .spot{margin-left:0;width:100%;text-align:left}
+}
 .controls{display:flex;gap:14px;flex-wrap:wrap;align-items:center;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:12px 14px}
 .ctl{display:flex;flex-direction:column;gap:4px}
 .ctl label{font-size:10px;color:var(--muted);text-transform:uppercase}
@@ -102,15 +105,15 @@ canvas{width:100%;height:260px;display:block;background:var(--panel2);border-rad
 
 <div id="gate">
   <div class="box">
-    <h2>Acesso ao Trading Desk</h2>
+    <h2>Trading Desk</h2>
     <p>Insira sua chave da API para carregar os dados.</p>
     <input id="apiKey" type="password" placeholder="Cole sua chave da API" autocomplete="off">
+    <div style="font-size:11px;color:var(--muted);margin-top:6px">Token disponível em <a href="https://go.oplab.com.br/api" target="_blank" rel="noopener" style="color:var(--cyan2)">go.oplab.com.br/api</a></div>
     <div id="gateErr"></div>
     <div style="display:flex;gap:10px;margin-top:10px">
       <button onclick="unlock()">Entrar →</button>
-      <button class="ghost" onclick="document.getElementById('apiKey').value='demo';unlock()">Usar dados demo</button>
     </div>
-    <div class="ver">Trading Desk · v2.6</div>
+    <div class="ver">Trading Desk · v2.7</div>
   </div>
 </div>
 
