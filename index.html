@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Trading Desk · BOVA11 · v3.1</title>
+<title>Trading Desk · BOVA11 · v3.2</title>
 <style>
 :root{--bg:#0b0f14;--panel:#121821;--panel2:#0e141c;--border:#1e2733;--txt:#c9d4e0;--muted:#6b7a8d;--cyan:#38e1e1;--cyan2:#4fd1ff;--green:#2ec26a;--amber:#e8b23a;--red:#e8556b;}
 *{box-sizing:border-box}
@@ -106,17 +106,13 @@ canvas{width:100%;height:260px;display:block;background:var(--panel2);border-rad
 <div id="gate">
   <div class="box">
     <h2>Trading Desk</h2>
-    <form id="loginForm" method="post" action="#" target="loginTarget" autocomplete="on" onsubmit="return handleLogin(event)">
-      <input type="text" name="username" autocomplete="username" value="oplab" style="position:absolute;opacity:0;height:0;width:0;padding:0;border:0" tabindex="-1" aria-hidden="true">
-      <input id="apiKey" name="oplab-token" type="password" placeholder="Cole sua chave da API" autocomplete="current-password">
-      <div style="font-size:11px;color:var(--muted);margin-top:6px">Token disponível em <a href="https://go.oplab.com.br/api" target="_blank" rel="noopener" style="color:var(--cyan2)">go.oplab.com.br/api</a></div>
-      <div id="gateErr"></div>
-      <div style="margin-top:10px">
-        <button type="submit" style="width:100%;padding:12px 16px">Entrar →</button>
-      </div>
-    </form>
-    <iframe name="loginTarget" style="display:none" title="login target"></iframe>
-    <div class="ver">v3.1</div>
+    <input id="apiKey" name="oplab-token" type="text" placeholder="Cole sua chave da API" autocomplete="on" onkeydown="if(event.key==='Enter')handleLogin()">
+    <div style="font-size:11px;color:var(--muted);margin-top:6px">Token disponível em <a href="https://go.oplab.com.br/api" target="_blank" rel="noopener" style="color:var(--cyan2)">go.oplab.com.br/api</a></div>
+    <div id="gateErr"></div>
+    <div style="margin-top:10px">
+      <button onclick="handleLogin()" style="width:100%;padding:12px 16px">Entrar →</button>
+    </div>
+    <div class="ver">v3.2</div>
   </div>
 </div>
 
@@ -340,28 +336,18 @@ function logout(){
   document.getElementById('gateErr').textContent='';
 }
 
-function handleLogin(e){
+function handleLogin(){
   var el=document.getElementById('apiKey');
   var k=el.value.trim();
   if(!k){
-    e.preventDefault();
     document.getElementById('gateErr').textContent='Informe uma chave.';
-    return false;
+    return;
   }
   document.getElementById('gateErr').textContent='';
   window._apiKey=k;
-  // deixa o form submeter de verdade (pro iframe oculto) para o Chrome
-  // reconhecer a submissão e oferecer salvar a senha. Só então troca a tela.
-  setTimeout(function(){
-    try{
-      document.getElementById('gate').classList.add('hidden');
-      document.getElementById('app').classList.remove('hidden');
-      drawPayoff('all');
-    }catch(err){
-      document.getElementById('gateErr').textContent='Erro: '+err.message;
-    }
-  }, 250);
-  return true;
+  document.getElementById('gate').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  drawPayoff('all');
 }
 
 function toggleStrat(i){
