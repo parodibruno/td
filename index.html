@@ -113,7 +113,7 @@ canvas{width:100%;height:260px;display:block;background:var(--panel2);border-rad
     <div style="margin-top:10px">
       <button onclick="handleLogin()" style="width:100%;padding:12px 16px">Entrar →</button>
     </div>
-    <div class="ver">v4.4</div>
+    <div class="ver">v4.5</div>
   </div>
 </div>
 
@@ -345,9 +345,9 @@ function updateBudgetInfo(){
     lbl.innerHTML = 'Orç. Nível B (10%): <b'+(over?' class="red"':' class="cyan"')+'>R$ '+b.toFixed(0)+'</b> · carteira R$'+port.deltaReais.toFixed(0);
   }
 }
-function bsGreeks(spot, strike, dte_days, iv, isCall){
+function bsGreeks(spot, strike, dte_days, iv, isCall, ratePct){
   if (!spot||!strike||!iv||dte_days<=0) return null;
-  var T=dte_days/252, r=0.1075;
+  var T=dte_days/252, r=(ratePct!=null?ratePct:10.75)/100;
   var sigma = iv>3 ? iv/100 : iv;
   if (sigma<=0) return null;
   var sqrtT=Math.sqrt(T);
@@ -366,9 +366,9 @@ function bsGreeks(spot, strike, dte_days, iv, isCall){
   var vega = spot*normPDF(d1)*sqrtT/100;
   return { delta:delta, theta:theta, gamma:gamma, vega:vega };
 }
-function bsPrice(spot, strike, dte_days, iv, isCall){
+function bsPrice(spot, strike, dte_days, iv, isCall, ratePct){
   if (!spot||!strike||!iv||dte_days<=0) return null;
-  var T=dte_days/252, r=0.1075;
+  var T=dte_days/252, r=(ratePct!=null?ratePct:10.75)/100;
   var sigma = iv>3 ? iv/100 : iv;
   if (sigma<=0) return null;
   var sqrtT=Math.sqrt(T);
@@ -404,17 +404,17 @@ function buildGreeksCache(){
 // (mid do bid/ask, ou último) via bissecção sobre bsPrice, e deriva as gregas
 // dessa vol — é o mesmo princípio que uma tela de posições precisa usar,
 // já que aí sim a vol reflete a opção específica, não uma referência genérica.
-function impliedVol(spot, strike, dte_days, targetPrice, isCall){
+function impliedVol(spot, strike, dte_days, targetPrice, isCall, ratePct){
   if (!spot||!strike||dte_days<=0||!targetPrice||targetPrice<=0) return null;
   var lo=0.01, hi=3.0;
-  var pLo = bsPrice(spot, strike, dte_days, lo, isCall);
-  var pHi = bsPrice(spot, strike, dte_days, hi, isCall);
+  var pLo = bsPrice(spot, strike, dte_days, lo, isCall, ratePct);
+  var pHi = bsPrice(spot, strike, dte_days, hi, isCall, ratePct);
   if (pLo==null || pHi==null) return null;
   if (targetPrice <= pLo) return lo*100;
   if (targetPrice >= pHi) return null; // preço fora da faixa plausível de vol
   for (var i=0;i<60;i++){
     var mid=(lo+hi)/2;
-    var price=bsPrice(spot, strike, dte_days, mid, isCall);
+    var price=bsPrice(spot, strike, dte_days, mid, isCall, ratePct);
     if (price==null) return null;
     if (price<targetPrice) lo=mid; else hi=mid;
   }
@@ -423,6 +423,9 @@ function impliedVol(spot, strike, dte_days, targetPrice, isCall){
 // Gregas de uma perna a partir do PREÇO DE MERCADO dela (não da cadeia).
 // Retorna null se não der pra resolver (sem preço, sem spot, etc.) — quem
 // chama decide o fallback (cache da cadeia ou vol de referência).
+// ratePct: taxa de juros da posição (pos['interest-rate']), em %. Sem ela,
+// cai no default de bsGreeks/bsPrice (10.75%) — mas usar a taxa real da
+// posição (ex: 13.9%) é o que faz a vol implícita bater com o Oplab.
 function getLegMarketGreeks(leg){
   var spot=spotData.close||0;
   var strike=leg.strike||0;
@@ -430,10 +433,11 @@ function getLegMarketGreeks(leg){
   var isCall=(leg['instrument-type']==='CALL');
   var bid=leg.bid||0, ask=leg.ask||0, close=leg.close||0;
   var price = (bid>0&&ask>0) ? (bid+ask)/2 : (close>0?close:0);
+  var ratePct = leg._rate;
   if (!spot||!strike||dte<=0||!price) return null;
-  var ivPct = impliedVol(spot, strike, dte, price, isCall);
+  var ivPct = impliedVol(spot, strike, dte, price, isCall, ratePct);
   if (ivPct==null) return null;
-  var g = bsGreeks(spot, strike, dte, ivPct, isCall);
+  var g = bsGreeks(spot, strike, dte, ivPct, isCall, ratePct);
   if (!g) return null;
   return { delta:g.delta, theta:g.theta, gamma:g.gamma, vega:g.vega, iv:ivPct, price:price };
 }
@@ -685,6 +689,14 @@ async function loadStrategies(){
     if (!r.ok) throw new Error('HTTP '+r.status);
     var data = await r.json();
     curPositions = Array.isArray(data) ? data : [];
+    // V4.5 — carimba a taxa de juros real da posição (pos['interest-rate'])
+    // em cada perna. É o que faz a vol implícita/gregas baterem com o Oplab
+    // (que usa a Selic/CDI da posição, não uma taxa fixa genérica).
+    curPositions.forEach(function(pos){
+      var rate = pos['interest-rate'];
+      if (rate==null) return;
+      ((pos.details&&pos.details.legs)||[]).forEach(function(leg){ leg._rate = rate; });
+    });
   }catch(e){ curPositions=[]; }
 }
 async function loadVies(){
