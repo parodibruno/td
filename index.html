@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Trading Desk · BOVA11 · v3.3</title>
+<title>Trading Desk · BOVA11 · v3.5</title>
 <style>
 :root{--bg:#0b0f14;--panel:#121821;--panel2:#0e141c;--border:#1e2733;--txt:#c9d4e0;--muted:#6b7a8d;--cyan:#38e1e1;--cyan2:#4fd1ff;--green:#2ec26a;--amber:#e8b23a;--red:#e8556b;}
 *{box-sizing:border-box}
@@ -107,16 +107,13 @@ canvas{width:100%;height:260px;display:block;background:var(--panel2);border-rad
 <div id="gate">
   <div class="box">
     <h2>Trading Desk</h2>
-    <form id="loginForm" method="post" action="#" target="loginTarget" onsubmit="return handleLogin()">
-      <input id="apiKey" name="oplab-token" type="text" placeholder="Cole sua chave da API" autocomplete="on">
-      <div style="font-size:11px;color:var(--muted);margin-top:6px">Token disponível em <a href="https://go.oplab.com.br/api" target="_blank" rel="noopener" style="color:var(--cyan2)">go.oplab.com.br/api</a></div>
-      <div id="gateErr"></div>
-      <div style="margin-top:10px">
-        <button type="submit" style="width:100%;padding:12px 16px">Entrar →</button>
-      </div>
-    </form>
-    <iframe name="loginTarget" style="display:none" title="login target"></iframe>
-    <div class="ver">v3.3</div>
+    <input id="apiKey" type="text" placeholder="Cole sua chave da API" onkeydown="if(event.key==='Enter')handleLogin()">
+    <div style="font-size:11px;color:var(--muted);margin-top:6px">Token disponível em <a href="https://go.oplab.com.br/api" target="_blank" rel="noopener" style="color:var(--cyan2)">go.oplab.com.br/api</a></div>
+    <div id="gateErr"></div>
+    <div style="margin-top:10px">
+      <button onclick="handleLogin()" style="width:100%;padding:12px 16px">Entrar →</button>
+    </div>
+    <div class="ver">v4.0</div>
   </div>
 </div>
 
@@ -125,189 +122,91 @@ canvas{width:100%;height:260px;display:block;background:var(--panel2);border-rad
     <span class="logo">TRADING DESK</span>
     <a href="https://gist.github.com/parodibruno/cfb20a7949565880dced5c2830d405a7" target="_blank" rel="noopener" style="font-size:11px;color:var(--cyan2);text-decoration:none;border:1px solid var(--border);border-radius:6px;padding:4px 10px;white-space:nowrap">📖 Manual de Gestão ↗</a>
     <div class="spot-row">
-      <span class="spot">R$ 162,74 <span class="chip">−0,86%</span></span>
+      <span class="spot"><span id="hdrPrice">R$ —</span> <span class="chip" id="hdrChip">—</span></span>
       <button onclick="logout()" style="background:transparent;border:none;color:var(--muted);font-size:11px;padding:4px 6px;font-weight:400;cursor:pointer;white-space:nowrap">Sair</button>
     </div>
   </header>
 
   <div class="controls">
-    <div class="ctl"><label>Capital (R$)</label><input id="capIn" value="1217000"></div>
-    <div class="ctl"><label>VXBR</label><input id="vxbrIn" value="17.44"></div>
-    <div class="ctl"><label>&nbsp;</label><span class="info">Orç. Nível B (10%): <b>R$ 121.700</b></span></div>
+    <div class="ctl"><label>Capital (R$)</label><input id="capIn" value="" placeholder="100000" oninput="onCapitalInput(this.value)"></div>
+    <div class="ctl"><label>VXBR</label><input id="vxbrIn" value="" placeholder="19.01" oninput="onVxbrInput(this.value)"></div>
+    <div class="ctl"><label>&nbsp;</label><span class="info" id="budgetInfo">Orç. Nível B (10%): <b>—</b></span></div>
+    <button class="ghost" onclick="refreshAll()" style="margin-left:auto"><span id="rico">↻</span> Atualizar</button>
+    <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);cursor:pointer">
+      <input type="checkbox" id="autoChk" onchange="toggleAuto()" style="width:auto;accent-color:var(--cyan)"> Auto (30s)
+    </label>
+    <span class="info" id="lastUpd"></span>
   </div>
 
   <div class="grid">
     <div class="card">
       <div class="lbl">P&amp;L · Estratégias</div>
-      <div class="big green">+R$ 2.690,00</div>
-      <div class="kv"><span class="k">% do capital</span><span class="v cyan">+0,22%</span></div>
-      <div class="kv"><span class="k">Estruturas</span><span class="v">2</span></div>
-      <div class="kv"><span class="k">Pernas abertas</span><span class="v">3</span></div>
+      <div class="big" id="pnlBig">—</div>
+      <div class="kv"><span class="k">% do capital</span><span class="v cyan" id="pnlPct">—</span></div>
+      <div class="kv"><span class="k">Estruturas</span><span class="v" id="pnlEstruturas">—</span></div>
+      <div class="kv"><span class="k">Pernas abertas</span><span class="v" id="pnlPernas">—</span></div>
     </div>
     <div class="card">
       <div class="lbl">BOVA11 · Spot</div>
-      <div class="kv"><span class="k">Último</span><span class="v">R$ 162,74</span></div>
-      <div class="kv"><span class="k">Abertura</span><span class="v">R$ 163,73</span></div>
-      <div class="kv"><span class="k">Máximo</span><span class="v green">R$ 164,11</span></div>
-      <div class="kv"><span class="k">Mínimo</span><span class="v red">R$ 162,40</span></div>
+      <div class="kv"><span class="k">Último</span><span class="v" id="spLast">—</span></div>
+      <div class="kv"><span class="k">Abertura</span><span class="v" id="spOpen">—</span></div>
+      <div class="kv"><span class="k">Máximo</span><span class="v green" id="spHigh">—</span></div>
+      <div class="kv"><span class="k">Mínimo</span><span class="v red" id="spLow">—</span></div>
     </div>
     <div class="card">
       <div class="lbl">Volatilidade Implícita</div>
-      <div class="big cyan">19,66%</div>
-      <div class="kv"><span class="k">HV 20d</span><span class="v">17,66%</span></div>
-      <div class="kv"><span class="k">IV / HV</span><span class="v amber">1,11 · bom</span></div>
-      <div class="kv"><span class="k">IV Rank</span><span class="v">31,9</span></div>
+      <div class="big cyan" id="ivBig">—</div>
+      <div class="kv"><span class="k">HV 20d</span><span class="v" id="ivHV">—</span></div>
+      <div class="kv"><span class="k">IV / HV</span><span class="v amber" id="ivRatio">—</span></div>
+      <div class="kv"><span class="k">IV Rank</span><span class="v" id="ivRank">—</span></div>
     </div>
     <div class="card">
       <div class="lbl">Cenário de Estresse · ±σ</div>
-      <div class="kv"><span class="k">Move ±1σ (5d)</span><span class="v">158,23 / 167,25</span></div>
-      <div class="kv"><span class="k">1σ em R$ / %</span><span class="v cyan">±R$ 4,51 · ±2,77%</span></div>
-      <div class="kv"><span class="k">P&amp;L −2σ</span><span class="v red">−R$ 9.400</span></div>
-      <div class="kv"><span class="k">P&amp;L −1σ</span><span class="v green">+R$ 1.850</span></div>
-      <div class="kv"><span class="k">P&amp;L +1σ</span><span class="v green">+R$ 2.480</span></div>
-      <div class="kv"><span class="k">P&amp;L +2σ</span><span class="v red">−R$ 12.100</span></div>
+      <div class="kv"><span class="k">Move ±1σ (5d)</span><span class="v" id="stRange">—</span></div>
+      <div class="kv"><span class="k">1σ em R$ / %</span><span class="v cyan" id="stSigma">—</span></div>
+      <div class="kv"><span class="k">P&amp;L −2σ</span><span class="v red" id="stM2">—</span></div>
+      <div class="kv"><span class="k">P&amp;L −1σ</span><span class="v" id="stM1">—</span></div>
+      <div class="kv"><span class="k">P&amp;L +1σ</span><span class="v" id="stP1">—</span></div>
+      <div class="kv"><span class="k">P&amp;L +2σ</span><span class="v" id="stP2">—</span></div>
     </div>
   </div>
 
   <div class="card">
     <div class="section-title">Payoff</div>
-    <div class="tabs">
-      <button class="active" onclick="setPayoff('all',this)">Consolidado</button>
-      <button onclick="setPayoff(0,this)">strangle 152-180 out</button>
-      <button onclick="setPayoff(1,this)">vendal call seca 170 out</button>
-    </div>
+    <div class="tabs" id="payoffTabs"></div>
     <canvas id="payoff" width="1100" height="260"></canvas>
     <div class="legend">
       <span><i style="background:#4fd1ff"></i>No vencimento</span>
-      <span><i style="background:#e8e8e8"></i>Spot 162,74</span>
+      <span><i style="background:#e8e8e8"></i>Spot atual</span>
       <span><i style="background:rgba(46,194,106,.4)"></i>Faixa de lucro</span>
     </div>
   </div>
 
   <div class="section-title">Minhas estruturas · decisão consolidada</div>
-  <div style="display:flex;flex-direction:column;gap:12px">
-
-    <div class="strat" id="st0">
-      <div class="strat-head" onclick="toggleStrat(0)">
-        <span class="caret">▸</span><span class="name">strangle 152-180 out</span>
-        <span class="status st-green"><span class="dot"></span>AGUARDAR</span>
-        <span class="pl green">+R$ 2.240,00</span>
-      </div>
-      <div class="strat-metrics">
-        <div class="metric"><div class="k">DTE úteis</div><div class="v">43</div></div>
-        <div class="metric"><div class="k">Capturado</div><div class="v">14%</div><div class="prog"><i style="width:14%"></i></div></div>
-        <div class="metric"><div class="k">Dist. BE</div><div class="v">9,0%</div><div class="sub">1,11σ</div></div>
-        <div class="metric"><div class="k">θ / créd. rest.</div><div class="v">2,0%<span class="sub">/dia</span></div></div>
-        <div class="metric"><div class="k">P&amp;L / capital</div><div class="v green">+0,184%</div></div>
-      </div>
-      <div class="strat-body">
-        <table>
-          <thead><tr><th>Perna</th><th>Qtd</th><th>Entrada</th><th>Último</th><th>Δ perna</th><th>P&amp;L</th></tr></thead>
-          <tbody>
-            <tr><td>BOVAJ36 CALL K180</td><td>V 4000</td><td>2,68</td><td>1,87</td><td class="delta-cell amber">−11Δ <span class="dwarn" title="Delta estimado pelo desk (BS próprio) — Oplab /v2/positions não retorna delta por perna. Calibração perna-a-perna pendente.">⚠</span></td><td class="green">+R$ 3.160,00</td></tr>
-            <tr><td>BOVAV152 PUT K152</td><td>V 4000</td><td>1,45</td><td>1,67</td><td class="delta-cell amber">+19Δ <span class="dwarn" title="Delta estimado pelo desk (BS próprio) — Oplab /v2/positions não retorna delta por perna. Calibração perna-a-perna pendente.">⚠</span></td><td class="red">−R$ 920,00</td></tr>
-          </tbody>
-        </table>
-        <div class="delta-note">⚠ Deltas por perna são estimados internamente (viés conhecido: PUT superestimado, CALL subestimado) — calibração vs. Oplab pendente.</div>
-        <div class="greeks">
-          <div>Δ Delta<b>+311</b></div><div>Θ Theta/d<b>+285</b></div><div>Γ Gamma<b>−141</b></div><div>ν Vega<b>−1249</b></div>
-        </div>
-        <div class="diag">
-          <div class="dtitle">Diagnóstico da estrutura · gates 1–4</div>
-          <div class="gates">
-            <span class="gchip gc-ok">1. Stop fin. — OK</span>
-            <span class="gchip gc-ok">2. Take-profit 14% — OK</span>
-            <span class="gchip gc-ok">3. Dist. BE 9,0% — OK</span>
-            <span class="gchip gc-ok">4. Nível A (max +19Δ / gat. 48Δ) — OK</span>
-          </div>
-          <div style="margin-top:10px">
-            <div class="diag-leg"><span class="lname">CALL K180</span><span class="lstat">−11Δ · gatilho R$ 174,66 · dist. +7,3% · BE 182,68 (1,58σ)</span></div>
-            <div class="diag-leg"><span class="lname">PUT K152</span><span class="lstat">+19Δ · gatilho R$ 149,33 · dist. −8,3% · BE 147,95 (1,11σ)</span></div>
-          </div>
-          <div class="diag-action">Ação recomendada: <b>Aguardar.</b> Nenhum gate disparado. Perna mais próxima do gatilho é a PUT K152 (+19Δ vs. 48Δ do gate 4., faixa DTE&gt;30) — folga de 29 pontos de Δ, sem urgência.</div>
-          <div class="diag-port">5. Nível B e 6. Stress são avaliados no nível carteira, não por estrutura — ver cards acima.</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="strat" id="st1">
-      <div class="strat-head" onclick="toggleStrat(1)">
-        <span class="caret">▸</span><span class="name">vendal call seca 170 out</span>
-        <span class="status st-green"><span class="dot"></span>AGUARDAR</span>
-        <span class="pl green">+R$ 450,00</span>
-      </div>
-      <div class="strat-metrics">
-        <div class="metric"><div class="k">DTE úteis</div><div class="v">43</div></div>
-        <div class="metric"><div class="k">Capturado</div><div class="v">25%</div><div class="prog"><i style="width:25%"></i></div></div>
-        <div class="metric"><div class="k">Dist. BE</div><div class="v">8,3%</div><div class="sub">1,02σ</div></div>
-        <div class="metric"><div class="k">θ / créd. rest.</div><div class="v">1,2%<span class="sub">/dia</span></div></div>
-        <div class="metric"><div class="k">P&amp;L / capital</div><div class="v green">+0,037%</div></div>
-      </div>
-      <div class="strat-body">
-        <table>
-          <thead><tr><th>Perna</th><th>Qtd</th><th>Entrada</th><th>Último</th><th>Δ perna</th><th>P&amp;L</th></tr></thead>
-          <tbody>
-            <tr><td>BOVAJ17 CALL K170</td><td>V 300</td><td>6,04</td><td>4,51</td><td class="delta-cell amber">−31Δ <span class="dwarn" title="Delta estimado pelo desk (BS próprio) — Oplab /v2/positions não retorna delta por perna. Calibração perna-a-perna pendente.">⚠</span></td><td class="green">+R$ 450,00</td></tr>
-          </tbody>
-        </table>
-        <div class="delta-note">⚠ Delta estimado internamente (viés conhecido: CALL longa tende a subestimar) — calibração vs. Oplab pendente.</div>
-        <div class="greeks">
-          <div>Δ Delta<b>−92</b></div><div>Θ Theta/d<b>+16</b></div><div>Γ Gamma<b>−8</b></div><div>ν Vega<b>−71</b></div>
-        </div>
-        <div class="diag">
-          <div class="dtitle">Diagnóstico da estrutura · gates 1–4</div>
-          <div class="gates">
-            <span class="gchip gc-ok">1. Stop fin. — OK</span>
-            <span class="gchip gc-ok">2. Take-profit 25% — OK</span>
-            <span class="gchip gc-ok">3. Dist. BE 8,3% — OK</span>
-            <span class="gchip gc-warn">4. Nível A (−31Δ / gat. 48Δ) — perna mais quente do book</span>
-          </div>
-          <div style="margin-top:10px">
-            <div class="diag-leg"><span class="lname">CALL K170</span><span class="lstat">−31Δ · gatilho R$ 164,85 · dist. +1,3% · BE 176,13 (1,02σ)</span></div>
-          </div>
-          <div class="diag-action">Ação recomendada: <b>Aguardar, monitorar de perto.</b> −31Δ (módulo 31) ainda abaixo do gatilho 4. (48Δ, faixa DTE&gt;30), mas é a perna com menor folga do book (17 pontos de Δ) e o spot está a só 1,3% do preço-gatilho. Se VXBR passar de 22,17, gatilho cai pra 44Δ — reavaliar.</div>
-          <div class="diag-port">5. Nível B e 6. Stress são avaliados no nível carteira, não por estrutura — ver cards acima.</div>
-        </div>
-      </div>
-    </div>
-
+  <div style="display:flex;flex-direction:column;gap:12px" id="strats">
+    <div class="card"><div class="lbl">Aguardando login / dados...</div></div>
   </div>
 
   <div class="card">
     <div class="section-title">Viés Direcional · BOVA11</div>
-    <div style="font-size:20px;font-weight:700" class="muted">NEUTRO <span style="font-size:12px;font-weight:400">— prefira venda de volatilidade ou aguarde</span></div>
-    <div class="bias-bar"><i style="background:var(--red)"></i><i style="background:var(--muted)"></i><i style="background:var(--green)"></i></div>
-    <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted)"><span>BAIXA (venda call)</span><span>NEUTRO</span><span>ALTA (venda put)</span></div>
-    <div style="margin-top:12px">
-      <div class="ind"><span>1. Médias Móveis <span class="d">entrelaçadas — sem tendência</span></span><span class="badge b-neu">NEUTRO · peso 4</span></div>
-      <div class="ind"><span>2. RSI 14 <span class="d">RSI 26 — sobrevendido</span></span><span class="badge b-alta">ALTA · peso 3</span></div>
-      <div class="ind"><span>3. MACD <span class="d">abaixo da linha de sinal</span></span><span class="badge b-baixa">BAIXA · peso 2</span></div>
-      <div class="ind"><span>4. Distância da MM20 <span class="d">4,8% — normal</span></span><span class="badge b-neu">NEUTRO · peso 1</span></div>
-    </div>
-    <div style="font-size:11px;color:var(--muted);margin-top:10px">Spot R$162,74 · MM20 R$170,88 · MM50 R$169,67 · RSI 26 · MACD −1,68</div>
+    <div id="viesBody"><div class="muted">Aguardando dados...</div></div>
   </div>
 
   <div class="card">
-    <div class="section-title">Radar de Oportunidades · venda de volatilidade</div>
-    <table>
-      <thead><tr><th>Estrutura</th><th>Venc.</th><th>Pernas</th><th>Créd/ct</th><th>POP</th><th>Breakevens</th></tr></thead>
-      <tbody>
-        <tr><td>Straddle ATM</td><td>18/dez/26·87du</td><td>CK164 PK164</td><td class="green">R$19,29</td><td class="red">0%</td><td>144,71 / 183,29</td></tr>
-        <tr><td>Straddle ATM</td><td>16/out/26·43du</td><td>CK163 PK163</td><td class="green">R$12,70</td><td class="red">0%</td><td>150,30 / 175,70</td></tr>
-        <tr><td>Strangle Δ30</td><td>18/dez/26·87du</td><td>CK174 PK155</td><td class="green">R$10,47</td><td class="amber">38%</td><td>144,53 / 184,47</td></tr>
-        <tr><td>Strangle Δ22</td><td>16/out/26·43du</td><td>CK174 PK153</td><td class="green">R$5,08</td><td class="green">57%</td><td>147,91 / 179,09</td></tr>
-        <tr><td>Strangle Δ15</td><td>16/out/26·43du</td><td>CK178 PK150</td><td class="green">R$3,60</td><td class="green">71%</td><td>146,40 / 181,60</td></tr>
-      </tbody>
-    </table>
+    <div class="section-title" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between" onclick="var el=document.getElementById('oport-strangle-box');var open=el.style.display==='none';el.style.display=open?'block':'none';document.getElementById('oport-hint').textContent=open?'clique para recolher':'clique para expandir'">
+      <span>Radar de Oportunidades · Strangles</span>
+      <span style="font-size:11px;color:var(--muted);font-weight:400" id="oport-hint">clique para expandir</span>
+    </div>
+    <div id="oport-strangle-box" style="display:none;margin-top:10px">
+      <table>
+        <thead><tr><th>Δ Strangle</th><th>Venc.</th><th>Pernas</th><th>Créd/ct</th><th>POP</th><th>Breakevens</th></tr></thead>
+        <tbody id="strangleBody"><tr><td colspan="6" class="muted">Aguardando dados...</td></tr></tbody>
+      </table>
+    </div>
     <div class="section-title" style="margin-top:16px">Direcionais</div>
     <table>
       <thead><tr><th>Tipo</th><th>Δ</th><th>Venc.</th><th>Strike</th><th>Créd</th><th>POP</th><th>Ret.aa</th><th>BE</th></tr></thead>
-      <tbody>
-        <tr><td>Venda PUT</td><td>0,29</td><td>16/out/26·43du</td><td>156</td><td class="green">R$2,54</td><td>71%</td><td class="cyan">9,7%</td><td>153,46</td></tr>
-        <tr><td>Venda PUT</td><td>0,19</td><td>16/out/26·43du</td><td>152</td><td class="green">R$1,67</td><td>81%</td><td class="cyan">6,5%</td><td>150,33</td></tr>
-        <tr><td>Venda CALL</td><td>0,31</td><td>16/out/26·43du</td><td>170</td><td class="green">R$4,54</td><td>69%</td><td class="cyan">16,1%</td><td>174,53</td></tr>
-        <tr><td>Venda CALL</td><td>0,19</td><td>16/out/26·43du</td><td>175</td><td class="green">R$2,95</td><td>81%</td><td class="cyan">10,0%</td><td>177,94</td></tr>
-      </tbody>
+      <tbody id="dirBody"><tr><td colspan="8" class="muted">Aguardando dados...</td></tr></tbody>
     </table>
   </div>
 
@@ -335,41 +234,776 @@ VIÉS: NEUTRO (MM20 170,88 · RSI 26 · MACD -1,68)</pre>
 </div>
 
 <script>
+// ─── PERSISTENCIA (localStorage) ────────────────────────────────────────────
+var LS_KEYS = { oplabToken:'td_oplab_token', capital:'td_capital', vxbr:'td_vxbr' };
+function lsGet(k, def) { try { var v = localStorage.getItem(k); return v === null ? def : v; } catch(e) { return def; } }
+function lsSet(k, v) { try { localStorage.setItem(k, v); } catch(e) {} }
+
+// ─── ESTADO ──────────────────────────────────────────────────────────────────
+var API = 'https://api.oplab.com.br/v3';
+var tok = '';
+var spotData = {};
+var radarData = {};
+var seriesInfo = {};
+var curPositions = [];
+var viesData = null;
+var autoTimer = null;
+var CAPITAL = 0;
+var CAPITAL_CONFIRMADO = false;
+var DELTA_BUDGET_PCT = 0.10;
+
+// ─── LOGIN / LOGOUT ──────────────────────────────────────────────────────────
+async function handleLogin(){
+  var el = document.getElementById('apiKey');
+  var k = el.value.trim();
+  if(!k){ document.getElementById('gateErr').textContent='Informe uma chave.'; return; }
+  document.getElementById('gateErr').textContent='Validando...';
+  try{
+    var r = await fetch(API + '/market/quote?tickers=BOVA11', { headers:{ 'Access-Token': k } });
+    if (r.status === 401) { document.getElementById('gateErr').textContent='Token inválido ou expirado (401).'; return; }
+    if (r.status === 402) { document.getElementById('gateErr').textContent='Assinatura expirada (402).'; return; }
+    if (!r.ok) { document.getElementById('gateErr').textContent='Erro HTTP ' + r.status + '.'; return; }
+  }catch(e){
+    document.getElementById('gateErr').textContent='Erro de conexão: ' + e.message;
+    return;
+  }
+  document.getElementById('gateErr').textContent='';
+  tok = k;
+  window._apiKey = k;
+  lsSet(LS_KEYS.oplabToken, k);
+  document.getElementById('gate').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  refreshAll();
+}
 function logout(){
-  window._apiKey=null;
+  tok=''; window._apiKey=null; curPositions=[]; seriesInfo={};
+  lsSet(LS_KEYS.oplabToken, '');
+  document.getElementById('apiKey').value='';
+  if (autoTimer) clearInterval(autoTimer);
+  var autoChk = document.getElementById('autoChk');
+  if (autoChk) autoChk.checked = false;
   document.getElementById('app').classList.add('hidden');
   document.getElementById('gate').classList.remove('hidden');
   document.getElementById('gateErr').textContent='';
 }
+function hdr(){ return { 'Access-Token': tok }; }
+async function apig(path){
+  var r = await fetch(API + path, { headers: hdr() });
+  if (!r.ok) throw new Error('HTTP ' + r.status + ' ' + path);
+  return r.json();
+}
 
-function handleLogin(){
-  var el=document.getElementById('apiKey');
-  var k=el.value.trim();
-  if(!k){
-    document.getElementById('gateErr').textContent='Informe uma chave.';
-    return false;
+// ─── HELPERS NUMÉRICOS / FRAMEWORK (portados do desk real) ──────────────────
+function normIvPct(raw){
+  raw = parseFloat(raw);
+  if (!raw || raw<=0 || isNaN(raw)) return 0;
+  if (raw<3) return raw*100;
+  if (raw<200) return raw;
+  return raw/100;
+}
+function getVxbrZone(v){
+  if (v<15.13) return { label:'EVITAR Vega negativo', color:'var(--cyan2)', sizeLabel:'EVITAR' };
+  if (v<16.89) return { label:'Posições pequenas', color:'var(--amber)', sizeLabel:'~20% do max' };
+  if (v<22.17) return { label:'Até 2/3 da posição max', color:'var(--green)', sizeLabel:'Até 67% do max' };
+  return { label:'Autorizada agressividade', color:'var(--red)', sizeLabel:'100% — agressivo' };
+}
+function getLegDeltaTrigger(dte, vxbr){
+  var t;
+  if (dte>30) t=0.48; else if (dte>15) t=0.42; else if (dte>=10) t=0.35; else t=0.28;
+  if (vxbr>22.17) t-=0.04;
+  return t;
+}
+function getDeltaBudgetReais(){ return CAPITAL * DELTA_BUDGET_PCT; }
+function calcPortfolioNetDeltaReais(){
+  var spot = spotData.close||0;
+  var allLegs=[];
+  (curPositions||[]).forEach(function(pos){ ((pos.details&&pos.details.legs)||[]).forEach(function(l){allLegs.push(l);}); });
+  var g = allLegs.length ? calcPositionGreeks(allLegs) : {delta:0};
+  return { deltaCotas:g.delta, deltaReais:g.delta*spot };
+}
+function onCapitalInput(val){
+  var v = parseFloat(val)||0;
+  if (v>0){ CAPITAL=v; CAPITAL_CONFIRMADO=true; lsSet(LS_KEYS.capital, String(v)); }
+  updateBudgetInfo();
+}
+function onVxbrInput(val){
+  var v = parseFloat(val)||0;
+  radarData.vxbr = v;
+  lsSet(LS_KEYS.vxbr, String(v));
+  updateBudgetInfo();
+  if (curPositions.length) renderEstruturas(curPositions);
+}
+function updateBudgetInfo(){
+  var lbl = document.getElementById('budgetInfo');
+  if (!lbl) return;
+  var b = getDeltaBudgetReais();
+  var port = calcPortfolioNetDeltaReais();
+  if (!CAPITAL_CONFIRMADO){
+    lbl.innerHTML = '⚠ capital não confirmado <b style="color:var(--amber)">defina o capital real</b>';
+  } else {
+    var over = b>0 && Math.abs(port.deltaReais)>=b;
+    lbl.innerHTML = 'Orç. Nível B (10%): <b'+(over?' class="red"':' class="cyan"')+'>R$ '+b.toFixed(0)+'</b> · carteira R$'+port.deltaReais.toFixed(0);
   }
-  document.getElementById('gateErr').textContent='';
-  window._apiKey=k;
-  // deixa o form submeter de verdade (pro iframe oculto) — é o evento de
-  // submit real que faz o Chrome salvar o valor pro autocomplete. Só depois
-  // troca a tela, dando tempo do navegador registrar a submissão.
-  setTimeout(function(){
-    try{
-      document.getElementById('gate').classList.add('hidden');
-      document.getElementById('app').classList.remove('hidden');
-      drawPayoff('all');
-    }catch(err){
-      document.getElementById('gateErr').textContent='Erro: '+err.message;
+}
+function bsGreeks(spot, strike, dte_days, iv, isCall){
+  if (!spot||!strike||!iv||dte_days<=0) return null;
+  var T=dte_days/252, r=0.1075;
+  var sigma = iv>3 ? iv/100 : iv;
+  if (sigma<=0) return null;
+  var sqrtT=Math.sqrt(T);
+  var d1=(Math.log(spot/strike)+(r+sigma*sigma/2)*T)/(sigma*sqrtT);
+  var d2=d1-sigma*sqrtT;
+  function normCDF(x){ var t=1/(1+0.2316419*Math.abs(x)); var d=0.3989423*Math.exp(-x*x/2);
+    var p=d*t*(0.3193815+t*(-0.3565638+t*(1.781478+t*(-1.821256+t*1.330274)))); return x>0?1-p:p; }
+  function normPDF(x){ return 0.3989423*Math.exp(-x*x/2); }
+  var Nd1=normCDF(d1);
+  var delta = isCall ? Nd1 : Nd1-1;
+  var gamma = normPDF(d1)/(spot*sigma*sqrtT);
+  var theta_year = isCall
+    ? -(spot*normPDF(d1)*sigma)/(2*sqrtT) - r*strike*Math.exp(-r*T)*normCDF(d2)
+    : -(spot*normPDF(d1)*sigma)/(2*sqrtT) + r*strike*Math.exp(-r*T)*normCDF(-d2);
+  var theta = theta_year/252;
+  var vega = spot*normPDF(d1)*sqrtT/100;
+  return { delta:delta, theta:theta, gamma:gamma, vega:vega };
+}
+function bsPrice(spot, strike, dte_days, iv, isCall){
+  if (!spot||!strike||!iv||dte_days<=0) return null;
+  var T=dte_days/252, r=0.1075;
+  var sigma = iv>3 ? iv/100 : iv;
+  if (sigma<=0) return null;
+  var sqrtT=Math.sqrt(T);
+  var d1=(Math.log(spot/strike)+(r+sigma*sigma/2)*T)/(sigma*sqrtT);
+  var d2=d1-sigma*sqrtT;
+  function normCDF(x){ var t=1/(1+0.2316419*Math.abs(x)); var d=0.3989423*Math.exp(-x*x/2);
+    var p=d*t*(0.3193815+t*(-0.3565638+t*(1.781478+t*(-1.821256+t*1.330274)))); return x>0?1-p:p; }
+  var disc = strike*Math.exp(-r*T);
+  if (isCall) return spot*normCDF(d1) - disc*normCDF(d2);
+  return disc*normCDF(-d2) - spot*normCDF(-d1);
+}
+function buildGreeksCache(){
+  var cache={};
+  if (!seriesInfo || !seriesInfo.series) return cache;
+  seriesInfo.series.forEach(function(serie){
+    (serie.strikes||[]).forEach(function(sk){
+      ['call','put'].forEach(function(side){
+        var o=sk[side]; if (!o||!o.symbol) return;
+        var bs=o.bs||{};
+        cache[o.symbol]={ delta:bs.delta!=null?bs.delta:0, theta:bs.theta!=null?bs.theta:0,
+          gamma:bs.gamma!=null?bs.gamma:0, vega:bs.vega!=null?bs.vega:0,
+          iv:bs.volatility!=null?bs.volatility:0, strike:o.strike||sk.strike||0, isCall:side==='call' };
+      });
+    });
+  });
+  return cache;
+}
+function triggerPriceForLeg(leg, dte, ivPct, target){
+  var isCall = (leg['instrument-type']==='CALL');
+  var K = leg.strike||0;
+  if (!K||!ivPct||dte<=0||!target) return null;
+  var lo=K*0.55, hi=K*1.45;
+  for (var i=0;i<80;i++){
+    var mid=(lo+hi)/2;
+    var g=bsGreeks(mid,K,dte,ivPct,isCall);
+    if (!g) return null;
+    var d=Math.abs(g.delta);
+    if (isCall){ if (d<target) lo=mid; else hi=mid; } else { if (d<target) hi=mid; else lo=mid; }
+  }
+  var px=(lo+hi)/2;
+  if (px<=K*0.56||px>=K*1.44) return null;
+  return px;
+}
+function calcPositionGreeks(legs){
+  var cache = buildGreeksCache();
+  var spot = spotData.close||0;
+  var ivRaw = radarData.ivCur||0;
+  var ivCurrent = ivRaw>0&&ivRaw<3 ? ivRaw*100 : (ivRaw>=3&&ivRaw<200 ? ivRaw : (ivRaw>=200?ivRaw/100:18));
+  var g={delta:0,theta:0,gamma:0,vega:0,found:0};
+  legs.forEach(function(leg){
+    var qty=leg.amount||0; if (qty===0) return;
+    var sign=(leg.type||'SELL')==='SELL'?-1:1;
+    var sym=leg.symbol||'';
+    var isCall=(leg['instrument-type']==='CALL');
+    var dte=leg['days-to-maturity']||0;
+    var strike=leg.strike||0;
+    var og=cache[sym];
+    var hasApi = og && (Math.abs(og.delta)>0.0001||Math.abs(og.gamma)>0.0000001||Math.abs(og.vega)>0.0001);
+    if (hasApi){
+      g.delta+=og.delta*qty*sign; g.theta+=og.theta*qty*sign; g.gamma+=og.gamma*qty*sign; g.vega+=og.vega*qty*sign; g.found++;
+    } else if (spot>0){
+      var legIv = og&&og.iv>0?og.iv:ivCurrent;
+      if (legIv>0&&legIv<3) legIv*=100; else if (legIv>=200) legIv/=100;
+      var bs=bsGreeks(spot,strike,dte,legIv,isCall);
+      if (bs){ g.delta+=bs.delta*qty*sign; g.theta+=bs.theta*qty*sign; g.gamma+=bs.gamma*qty*sign; g.vega+=bs.vega*qty*sign; g.found++; }
     }
-  }, 250);
-  return true;
+  });
+  return g;
+}
+function getLegSignedDelta(leg){
+  var cache = buildGreeksCache();
+  var og = cache[leg.symbol||''];
+  var sign = (leg.type||'SELL')==='SELL' ? -1 : 1;
+  var isCall = (leg['instrument-type']==='CALL');
+  var hasApi = og && Math.abs(og.delta)>0.0001;
+  if (hasApi) return { value: og.delta*sign*-1, estimado:false };
+  var spot=spotData.close||0, strike=leg.strike||0, dte=leg['days-to-maturity']||0;
+  var ivPct = normIvPct(radarData.ivCur)||20;
+  var bs=bsGreeks(spot,strike,dte,ivPct,isCall);
+  if (!bs) return { value:null, estimado:true };
+  return { value: bs.delta*sign*-1, estimado:true };
+}
+function isMonthlyExpiry(dateStr){
+  if (!dateStr) return false;
+  try{
+    var dt=new Date(dateStr.includes('T')?dateStr:dateStr+'T12:00:00');
+    var day=dt.getDate(), dow=dt.getDay();
+    return dow===5 && day>=15 && day<=21;
+  }catch(e){ return true; }
+}
+function findBreakevens(legs){
+  var spot=spotData.close||168;
+  var lo=spot*0.65, hi=spot*1.35, n=400;
+  var bes=[], prev=calcPayoffAtPrice(legs,lo);
+  for (var i=1;i<=n;i++){
+    var s=lo+(hi-lo)*i/n;
+    var cur=calcPayoffAtPrice(legs,s);
+    if ((prev<0)!==(cur<0)) bes.push(lo+(hi-lo)*(i-0.5)/n);
+    prev=cur;
+  }
+  return bes;
+}
+function calcPayoffAtPrice(legs, s){
+  var pnl=0;
+  legs.forEach(function(leg){
+    var strike=leg.strike||0, qty=leg.amount||0, pxIn=leg['price-in']||0;
+    var type=leg['instrument-type']||'', action=leg.type||'SELL';
+    var intrinsic=0;
+    if (type==='CALL') intrinsic=Math.max(0,s-strike);
+    if (type==='PUT') intrinsic=Math.max(0,strike-s);
+    if (action==='SELL') pnl+=qty*(pxIn-intrinsic); else pnl+=qty*(intrinsic-pxIn);
+  });
+  return pnl;
+}
+function calcPayoffNow(legs){
+  var pnl=0;
+  legs.forEach(function(leg){
+    var ini=leg.initial||0, qty=leg.amount||0, close=leg.close||0, ask=leg.ask||0, bid=leg.bid||0;
+    var action=leg.type||'SELL';
+    if (qty===0){ if (leg.current!=null) pnl+=leg.current; return; }
+    var refPrice = action==='SELL' ? (ask>0?ask:close) : (bid>0?bid:close);
+    if (action==='SELL') pnl += ini-(refPrice*qty); else pnl += (refPrice*qty)-Math.abs(ini);
+  });
+  return pnl;
+}
+function calcMetrics(pos){
+  var legs=(pos&&pos.details&&pos.details.legs)||[];
+  var outLegs=(pos&&pos.details&&pos.details.out)||[];
+  var creditoTotal=0;
+  legs.forEach(function(leg){ creditoTotal+=leg.initial||0; });
+  var desmontado=0;
+  outLegs.forEach(function(leg){
+    var qty=leg.amount||0, price=leg.price||leg['price-in']||0, action=leg.action||leg.type||'BUY';
+    if (action==='BUY') desmontado-=qty*price; else desmontado+=qty*price;
+  });
+  return { creditoTotal:creditoTotal, desmontado:desmontado };
+}
+function checkRollTriggers(pos){
+  var legs=(pos&&pos.details&&pos.details.legs)||[];
+  var abertas=legs.filter(function(l){ return (l.amount||0)!==0; });
+  var dte=(pos&&pos['days-to-maturity'])||0;
+  var vxbr=radarData.vxbr||0;
+  var trigger=getLegDeltaTrigger(dte,vxbr);
+  var cache=buildGreeksCache();
+  var ivRef=normIvPct(radarData.ivCur)||20;
+  var spot=spotData.close||0;
+  var info = abertas.map(function(leg){
+    var og=cache[leg.symbol||''];
+    var d=(og&&Math.abs(og.delta)>0.0001)?og.delta:null;
+    var legDte=leg['days-to-maturity']||dte;
+    if (d===null){ var bs=bsGreeks(spot,leg.strike||0,legDte,ivRef,leg['instrument-type']==='CALL'); d=bs?bs.delta:0; }
+    var ivLeg=(og&&og.iv>0)?normIvPct(og.iv):ivRef;
+    return { leg:leg, tipo:leg['instrument-type']||'', strike:leg.strike||0, delta:d, absDelta:Math.abs(d),
+      breach:Math.abs(d)>=trigger, triggerPx:triggerPriceForLeg(leg,legDte,ivLeg,trigger) };
+  });
+  var budget=getDeltaBudgetReais();
+  var portfolio=calcPortfolioNetDeltaReais();
+  var netBreach = budget>0 && Math.abs(portfolio.deltaReais)>=budget;
+  return { trigger:trigger, legs:info, breaches:info.filter(function(x){return x.breach;}),
+    portfolioDeltaReais:portfolio.deltaReais, budget:budget, netBreach:netBreach, dte:dte };
+}
+function getRolloverStage(legs, pctCapturado, dte, pos){
+  var spot=spotData.close||168;
+  var bes=findBreakevens(legs);
+  var nearestDist=100;
+  bes.forEach(function(be){ var d=Math.abs(be-spot)/spot*100; if (d<nearestDist) nearestDist=d; });
+  var tr = pos ? checkRollTriggers(pos) : null;
+  if (pctCapturado<=-200) return { label:'Encerrar — stop financeiro', desc:'Perda de '+Math.abs(pctCapturado).toFixed(0)+'% do crédito (limite 200%). Encerra, não rola.', color:'var(--red)', tr:tr };
+  if (pctCapturado>=50) return { label:'Encerrar — take-profit', desc:pctCapturado.toFixed(0)+'% do crédito capturado (alvo 50%). Encerra ou rola pra fora.', color:'var(--green)', tr:tr };
+  if (dte<=15) return { label:'Encerrar ou rolar pra fora', desc:dte+' DU restantes (limite 15). O prêmio que sobra não paga o gamma que vem.', color:'var(--green)', tr:tr };
+  if (nearestDist<3) return { label:'Afastar strike ou encerrar', desc:'Spot a '+nearestDist.toFixed(1)+'% do breakeven (gatilho 3%). Rolar afastando o strike, crédito líquido ≥ 0.', color:'var(--red)', tr:tr };
+  if (tr && tr.breaches.length){
+    var pior = tr.breaches.slice().sort(function(a,b){ return b.absDelta-a.absDelta; })[0];
+    var dsc = pior.tipo+' K'+pior.strike.toFixed(0)+' em '+(pior.absDelta*100).toFixed(0)+'Δ (gatilho '+(tr.trigger*100).toFixed(0)+'Δ em '+dte+' DU).';
+    if (pior.absDelta>=0.50 || tr.breaches.length>=2)
+      return { label:'Rolagem 2 — straddle Δ50', desc:dsc+' Converge as duas pernas pra delta 50, no crédito.', color:'var(--yellow)', tr:tr };
+    return { label:'Rolagem 1 — 0x0', desc:dsc+' Crédito da perna não testada paga a recompra da testada.', color:'var(--accent)', tr:tr };
+  }
+  if (tr && tr.netBreach)
+    return { label:'Recentrar — Nível B', desc:'Delta líquido da carteira R$'+tr.portfolioDeltaReais.toFixed(0)+' acima do orçamento de R$'+tr.budget.toFixed(0)+' sem perna no gatilho — é concentração.', color:'var(--yellow)', tr:tr };
+  var aviso = nearestDist<6
+    ? 'Nenhum gatilho. Spot a '+nearestDist.toFixed(1)+'% do breakeven (banda 3–6%) — monitorar, sem ação forçada.'
+    : 'Delta líquido dentro do orçamento, nenhuma perna no gatilho e breakeven distante.';
+  return { label:'Aguardar', desc:aviso, color:'var(--muted)', tr:tr };
+}
+function mapColor(c){
+  if (c.indexOf('red')>=0) return { v:'var(--red)', bg:'rgba(232,85,107,.14)' };
+  if (c.indexOf('green')>=0) return { v:'var(--green)', bg:'rgba(46,194,106,.14)' };
+  if (c.indexOf('yellow')>=0) return { v:'var(--amber)', bg:'rgba(232,178,58,.14)' };
+  if (c.indexOf('accent')>=0) return { v:'var(--cyan2)', bg:'rgba(79,209,255,.14)' };
+  return { v:'var(--muted)', bg:'rgba(107,122,141,.14)' };
+}
+function sma(values, period){ if (values.length<period) return null; var s=values.slice(-period); return s.reduce(function(a,b){return a+b;},0)/period; }
+function emaSeries(values, period){
+  if (values.length<period) return [];
+  var k=2/(period+1), out=[];
+  var emaVal=values.slice(0,period).reduce(function(a,b){return a+b;},0)/period;
+  out.push(emaVal);
+  for (var i=period;i<values.length;i++){ emaVal=values[i]*k+emaVal*(1-k); out.push(emaVal); }
+  return out;
+}
+function calcRSI(closes, period){
+  if (closes.length<period+1) return null;
+  var gains=0, losses=0;
+  for (var i=closes.length-period;i<closes.length;i++){ var diff=closes[i]-closes[i-1]; if (diff>=0) gains+=diff; else losses-=diff; }
+  var avgGain=gains/period, avgLoss=losses/period;
+  if (avgLoss===0) return 100;
+  var rs=avgGain/avgLoss;
+  return 100-(100/(1+rs));
+}
+function calcMACD(closes){
+  if (closes.length<35) return null;
+  var ema12=emaSeries(closes,12), ema26=emaSeries(closes,26);
+  var offset=ema12.length-ema26.length;
+  var macdLine=[];
+  for (var i=0;i<ema26.length;i++) macdLine.push(ema12[i+offset]-ema26[i]);
+  var signalLine=emaSeries(macdLine,9);
+  var macd=macdLine[macdLine.length-1], signal=signalLine[signalLine.length-1];
+  return { macd:macd, signal:signal, hist:macd-signal };
+}
+function fmtDate(d){
+  if (!d||d==='—') return '—';
+  try{ var dt=new Date(d.includes('T')?d:d+'T12:00:00'); return dt.toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'2-digit'}); }
+  catch(e){ return d; }
+}
+function fmtVol(v){
+  if (v>=1e9) return (v/1e9).toFixed(1)+'B';
+  if (v>=1e6) return (v/1e6).toFixed(1)+'M';
+  if (v>=1e3) return (v/1e3).toFixed(1)+'K';
+  return String(v||0);
 }
 
-function toggleStrat(i){
-  document.getElementById('st'+i).classList.toggle('open');
+// ─── CARREGAMENTO DE DADOS ───────────────────────────────────────────────────
+async function loadSpot(){
+  try{
+    var d = await apig('/market/quote?tickers=BOVA11');
+    var q = Array.isArray(d) ? (d.find(function(x){return x.symbol==='BOVA11';})||d[0]) : d;
+    spotData = q||{};
+  }catch(e){}
+}
+async function loadVolatility(){
+  try{
+    var d = await apig('/market/stocks/BOVA11');
+    radarData.ivRank=d.iv_1y_rank||0; radarData.ivPct=d.iv_1y_percentile||0;
+    radarData.ivCur=d.iv_current||0; radarData.hvCur=d.ewma_current||0;
+  }catch(e){}
+}
+async function loadSeries(){
+  try{
+    var d = await apig('/market/instruments/series/BOVA11?bs=true&irate=0.1075');
+    seriesInfo = d;
+  }catch(e){ seriesInfo={}; }
+}
+async function loadStrategies(){
+  try{
+    var r = await fetch('https://spa.oplab.com.br/v2/positions', { headers:{'Access-Token':tok} });
+    if (!r.ok) throw new Error('HTTP '+r.status);
+    var data = await r.json();
+    curPositions = Array.isArray(data) ? data : [];
+  }catch(e){ curPositions=[]; }
+}
+async function loadVies(){
+  try{
+    var r = await fetch(API+'/market/historical/BOVA11/1d?amount=200', { headers:{'Access-Token':tok} });
+    if (!r.ok){ viesData=null; return; }
+    var d = await r.json();
+    viesData = (d.data||[]).filter(function(c){ return c.close>0; });
+  }catch(e){ viesData=null; }
+}
+async function loadRadarVxbr(){
+  var ok=false;
+  try{
+    var r = await fetch(API+'/market/quote?tickers=VXBR', { headers:hdr() });
+    if (r.ok){
+      var arr = await r.json();
+      var q = Array.isArray(arr) ? (arr.find(function(x){return x.symbol==='VXBR';})||arr[0]) : arr;
+      var v = q.close||q.last||0;
+      if (v>0){ radarData.vxbr=v; lsSet(LS_KEYS.vxbr,String(v)); ok=true; }
+    }
+  }catch(e){}
+  if (!ok && !(radarData.vxbr>0)){
+    var saved=parseFloat(lsGet(LS_KEYS.vxbr,''));
+    radarData.vxbr = saved>0 ? saved : (normIvPct(radarData.ivCur)||0);
+  }
+  var vxIn = document.getElementById('vxbrIn');
+  if (vxIn && radarData.vxbr>0) vxIn.value = radarData.vxbr.toFixed(2);
 }
 
+// ─── RENDER: HEADER / CARDS ─────────────────────────────────────────────────
+function renderHeaderSpot(){
+  var price=spotData.close||0, open=spotData.open||0;
+  var vp = spotData.variation || (open ? (price-open)/open*100 : 0);
+  document.getElementById('hdrPrice').textContent = 'R$ '+price.toFixed(2);
+  var chip = document.getElementById('hdrChip');
+  chip.textContent = (vp>=0?'+':'')+vp.toFixed(2)+'%';
+  chip.style.background = vp>=0 ? 'rgba(46,194,106,.15)' : 'rgba(232,85,107,.15)';
+  chip.style.color = vp>=0 ? 'var(--green)' : 'var(--red)';
+  document.getElementById('spLast').textContent='R$ '+price.toFixed(2);
+  document.getElementById('spOpen').textContent='R$ '+open.toFixed(2);
+  document.getElementById('spHigh').textContent='R$ '+(spotData.high||0).toFixed(2);
+  document.getElementById('spLow').textContent='R$ '+(spotData.low||0).toFixed(2);
+}
+function renderIvCard(){
+  document.getElementById('ivBig').textContent = (radarData.ivCur||0).toFixed(2)+'%';
+  document.getElementById('ivHV').textContent = (radarData.hvCur||0).toFixed(2)+'%';
+  var ratio = radarData.hvCur>0 ? (radarData.ivCur/radarData.hvCur) : 0;
+  var label = ratio>=1.3?'excelente':ratio>=1.1?'bom':ratio>=0.9?'ok':'fraco';
+  document.getElementById('ivRatio').textContent = (ratio>0?ratio.toFixed(2):'—')+' · '+label;
+  document.getElementById('ivRank').textContent = (radarData.ivRank||0).toFixed(1);
+}
+function renderPnlAndStressCards(){
+  var allLegs=[];
+  curPositions.forEach(function(pos){ ((pos.details&&pos.details.legs)||[]).forEach(function(l){ allLegs.push(l); }); });
+  var pnlTotal=0, nLegsAbertas=0;
+  curPositions.forEach(function(pos){
+    ((pos.details&&pos.details.legs)||[]).forEach(function(leg){
+      if ((leg.amount||0)!==0){ pnlTotal += calcPayoffNow([leg]); nLegsAbertas++; }
+    });
+  });
+  document.getElementById('pnlBig').innerHTML = '<span class="'+(pnlTotal>=0?'green':'red')+'">'+(pnlTotal>=0?'+':'')+'R$ '+pnlTotal.toFixed(2)+'</span>';
+  document.getElementById('pnlPct').textContent = CAPITAL>0 ? ((pnlTotal/CAPITAL*100)>=0?'+':'')+(pnlTotal/CAPITAL*100).toFixed(2)+'%' : '—';
+  document.getElementById('pnlEstruturas').textContent = curPositions.length;
+  document.getElementById('pnlPernas').textContent = nLegsAbertas;
+
+  var spot=spotData.close||0;
+  var ivPct = normIvPct(radarData.ivCur)||20;
+  var sigma5d = spot*(ivPct/100)*Math.sqrt(5/252);
+  var sigma5dPct = spot>0 ? (sigma5d/spot*100) : 0;
+  document.getElementById('stRange').textContent = spot>0 ? (spot-sigma5d).toFixed(2)+' / '+(spot+sigma5d).toFixed(2) : '—';
+  document.getElementById('stSigma').textContent = spot>0 ? '±R$ '+sigma5d.toFixed(2)+' · ±'+sigma5dPct.toFixed(2)+'%' : '—';
+  function pnlAt(mult){
+    var s = spot + sigma5d*mult;
+    var pnl=0;
+    allLegs.forEach(function(leg){ if((leg.amount||0)!==0) pnl += calcPayoffAtPrice([leg], s) - calcPayoffAtPrice([leg], spot) + calcPayoffNow([leg]); });
+    return pnl;
+  }
+  var m2=pnlAt(-2), m1=pnlAt(-1), p1=pnlAt(1), p2=pnlAt(2);
+  function setStress(id, val){
+    var el=document.getElementById(id);
+    el.textContent = (val>=0?'+':'')+'R$ '+val.toFixed(0);
+    el.className = 'v '+(val>=0?'green':'red');
+  }
+  if (spot>0){ setStress('stM2',m2); setStress('stM1',m1); setStress('stP1',p1); setStress('stP2',p2); }
+}
+
+// ─── RENDER: PAYOFF ──────────────────────────────────────────────────────────
+var payoffTabsData=[];
+function buildPayoffTabsUI(){
+  var allLegs=[];
+  curPositions.forEach(function(pos){ ((pos.details&&pos.details.legs)||[]).forEach(function(l){ allLegs.push(l); }); });
+  payoffTabsData=[{name:'Consolidado', legs:allLegs}];
+  curPositions.forEach(function(pos){
+    var legs=(pos.details&&pos.details.legs)||[];
+    if (legs.length) payoffTabsData.push({ name: pos.name||('Pos #'+pos.id), legs:legs });
+  });
+  var tabsEl=document.getElementById('payoffTabs');
+  tabsEl.innerHTML = payoffTabsData.map(function(t,i){ return '<button class="'+(i===0?'active':'')+'" onclick="setPayoff('+i+',this)">'+t.name+'</button>'; }).join('');
+  drawPayoff(0);
+}
+function setPayoff(idx, btn){
+  var tabs=btn.parentElement.children;
+  for (var i=0;i<tabs.length;i++) tabs[i].classList.remove('active');
+  btn.classList.add('active');
+  drawPayoff(idx);
+}
+function drawPayoff(idx){
+  var cv=document.getElementById('payoff'); if (!cv) return;
+  var ctx=cv.getContext('2d');
+  var W=cv.width, H=cv.height, pad=40;
+  var spot = spotData.close || 168;
+  var lo=spot*0.80, hi=spot*1.20;
+  var legs = (payoffTabsData[idx]&&payoffTabsData[idx].legs) || [];
+  function xs(S){ return pad+(S-lo)/(hi-lo)*(W-2*pad); }
+  var vals=[], step=(hi-lo)/240;
+  for (var S=lo; S<=hi; S+=step){ vals.push(calcPayoffAtPrice(legs,S)); }
+  var vmax=vals.length?vals[0]:0, vmin=vals.length?vals[0]:0;
+  for (var i=0;i<vals.length;i++){ if (vals[i]>vmax) vmax=vals[i]; if (vals[i]<vmin) vmin=vals[i]; }
+  function ys(v){ return H-pad-(v-vmin)/((vmax-vmin)||1)*(H-2*pad); }
+  ctx.clearRect(0,0,W,H);
+  var bes=[];
+  for (var s=lo; s<hi; s+=step){ if (calcPayoffAtPrice(legs,s)*calcPayoffAtPrice(legs,s+step)<0) bes.push(s); }
+  if (bes.length>=2){
+    ctx.fillStyle='rgba(46,194,106,.12)';
+    ctx.fillRect(xs(bes[0]),pad,xs(bes[bes.length-1])-xs(bes[0]),H-2*pad);
+  }
+  ctx.strokeStyle='#2a3542'; ctx.beginPath(); ctx.moveTo(pad,ys(0)); ctx.lineTo(W-pad,ys(0)); ctx.stroke();
+  ctx.strokeStyle='#4fd1ff'; ctx.lineWidth=2; ctx.beginPath();
+  for (var j=0;j<vals.length;j++){ var Sx=lo+j*step; if (j===0) ctx.moveTo(xs(Sx),ys(vals[j])); else ctx.lineTo(xs(Sx),ys(vals[j])); }
+  ctx.stroke();
+  ctx.strokeStyle='#e8e8e8'; ctx.setLineDash([4,4]); ctx.beginPath();
+  ctx.moveTo(xs(spot),pad); ctx.lineTo(xs(spot),H-pad); ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle='#e8e8e8'; ctx.font='11px monospace'; ctx.fillText('spot '+spot.toFixed(2),xs(spot)+4,pad+12);
+  ctx.fillStyle='#2ec26a';
+  for (var m=0;m<bes.length;m++){ ctx.beginPath(); ctx.arc(xs(bes[m]),ys(0),4,0,7); ctx.fill();
+    ctx.fillText('BE '+bes[m].toFixed(1),xs(bes[m])-18,ys(0)+18); }
+}
+
+// ─── RENDER: MINHAS ESTRUTURAS (diagnóstico gates 1-4) ──────────────────────
+function renderGreeksBlock(g){
+  if (!g||g.found===0) return '<div class="greeks"><div>Gregas indisponíveis</div></div>';
+  function it(sym,val){ return '<div>'+sym+'<b>'+(val>=0?'+':'')+val.toFixed(0)+'</b></div>'; }
+  return '<div class="greeks">'+it('Δ Delta',g.delta)+it('Θ Theta/d',g.theta)+it('Γ Gamma',g.gamma)+it('ν Vega',g.vega)+'</div>';
+}
+function evaluateStructure(pos){
+  var legs=(pos.details&&pos.details.legs)||[];
+  var abertas=legs.filter(function(l){ return (l.amount||0)!==0; });
+  var m=calcMetrics(pos);
+  var pnlNow=calcPayoffNow(legs);
+  var pct = m.creditoTotal>0 ? (pnlNow/m.creditoTotal*100) : 0;
+  var dte = pos['days-to-maturity']||0;
+  var bes = findBreakevens(legs);
+  var spot = spotData.close||0;
+  var nearestDist=100, nearestBe=null;
+  bes.forEach(function(be){ var d=Math.abs(be-spot)/spot*100; if (d<nearestDist){ nearestDist=d; nearestBe=be; } });
+  var tr = checkRollTriggers(pos);
+  var maxLeg = tr.legs.slice().sort(function(a,b){ return b.absDelta-a.absDelta; })[0];
+  var gates=[];
+  gates.push(pct<=-200 ? {n:1,status:'trig',text:'Stop fin. — perda '+Math.abs(pct).toFixed(0)+'%'} : {n:1,status:'ok',text:'Stop fin. — OK'});
+  if (pct>=50) gates.push({n:2,status:'trig',text:'Take-profit '+pct.toFixed(0)+'% — disparado'});
+  else if (dte<=15) gates.push({n:2,status:'trig',text:'Take-profit por tempo ('+dte+'du)'});
+  else gates.push({n:2,status:'ok',text:'Take-profit '+pct.toFixed(0)+'% — OK'});
+  if (nearestDist<3) gates.push({n:3,status:'trig',text:'Dist. BE '+nearestDist.toFixed(1)+'% — disparado'});
+  else if (nearestDist<6) gates.push({n:3,status:'warn',text:'Dist. BE '+nearestDist.toFixed(1)+'% — aviso'});
+  else gates.push({n:3,status:'ok',text:'Dist. BE '+(nearestBe?nearestDist.toFixed(1)+'%':'—')+' — OK'});
+  if (tr.breaches.length) gates.push({n:4,status:'trig',text:'Nível A ('+(maxLeg.absDelta*100).toFixed(0)+'Δ / gat. '+(tr.trigger*100).toFixed(0)+'Δ) — disparado'});
+  else if (maxLeg && maxLeg.absDelta>=tr.trigger*0.85) gates.push({n:4,status:'warn',text:'Nível A ('+(maxLeg.absDelta*100).toFixed(0)+'Δ / gat. '+(tr.trigger*100).toFixed(0)+'Δ) — perna mais quente do book'});
+  else gates.push({n:4,status:'ok',text:'Nível A (max '+(maxLeg?(maxLeg.absDelta*100).toFixed(0):'0')+'Δ / gat. '+(tr.trigger*100).toFixed(0)+'Δ) — OK'});
+  var roll = getRolloverStage(legs, pct, dte, pos);
+  return { legs:abertas, tr:tr, bes:bes, nearestDist:nearestDist, nearestBe:nearestBe, pct:pct, dte:dte, pnlNow:pnlNow, m:m, gates:gates, roll:roll, spot:spot };
+}
+function renderEstruturas(positions){
+  var container=document.getElementById('strats');
+  var withLegs = positions.filter(function(p){ return (p.details&&p.details.legs&&p.details.legs.length); });
+  if (!withLegs.length){ container.innerHTML='<div class="card"><div class="lbl">Nenhuma posição aberta.</div></div>'; return; }
+  var html='';
+  withLegs.forEach(function(pos, idx){
+    var ev = evaluateStructure(pos);
+    var mc = mapColor(ev.roll.color);
+    var plCls = ev.pnlNow>=0?'green':'red';
+    var pctClamp = Math.max(0, Math.min(100, ev.pct));
+    var legsRows = ev.legs.map(function(leg){
+      var sd = getLegSignedDelta(leg);
+      var deltaTxt = sd.value!=null ? (sd.value>=0?'+':'')+(sd.value*100).toFixed(0)+'Δ' : '—';
+      var warnIcon = sd.estimado ? ' <span class="dwarn" title="Delta estimado — calibração vs. Oplab pendente.">⚠</span>' : '';
+      var pnlLeg = calcPayoffNow([leg]);
+      return '<tr><td>'+(leg.symbol||'')+' '+(leg['instrument-type']||'')+' K'+(leg.strike||0).toFixed(0)+'</td>'
+        + '<td>'+((leg.type||'SELL')==='SELL'?'V':'C')+' '+Math.abs(leg.amount||0)+'</td>'
+        + '<td>'+(leg['price-in']||0).toFixed(2)+'</td>'
+        + '<td>'+(leg.close||0).toFixed(2)+'</td>'
+        + '<td class="delta-cell amber">'+deltaTxt+warnIcon+'</td>'
+        + '<td class="'+(pnlLeg>=0?'green':'red')+'">'+(pnlLeg>=0?'+':'')+'R$ '+pnlLeg.toFixed(2)+'</td></tr>';
+    }).join('');
+    var gatesHtml = ev.gates.map(function(g){
+      var cls = g.status==='ok'?'gc-ok':g.status==='warn'?'gc-warn':'gc-trig';
+      return '<span class="gchip '+cls+'">'+g.n+'. '+g.text+'</span>';
+    }).join('');
+    var legLines = ev.tr.legs.map(function(x){
+      var distTxt = x.triggerPx ? (((x.triggerPx-ev.spot)/ev.spot*100)>=0?'+':'')+(((x.triggerPx-ev.spot)/ev.spot*100)).toFixed(1)+'%' : '—';
+      return '<div class="diag-leg"><span class="lname">'+x.tipo+' K'+x.strike.toFixed(0)+'</span>'
+        + '<span class="lstat">'+(x.absDelta*100).toFixed(0)+'Δ · gatilho '+(x.triggerPx?'R$ '+x.triggerPx.toFixed(2):'—')+' · dist. '+distTxt+'</span></div>';
+    }).join('');
+    html += '<div class="strat" id="st'+idx+'" style="border-left-color:'+mc.v+'">'
+      + '<div class="strat-head" onclick="toggleStrat('+idx+')">'
+      + '<span class="caret">▸</span><span class="name">'+(pos.name||'Posição')+'</span>'
+      + '<span class="status" style="background:'+mc.bg+';color:'+mc.v+'"><span class="dot" style="background:'+mc.v+'"></span>'+ev.roll.label.toUpperCase()+'</span>'
+      + '<span class="pl '+plCls+'">'+(ev.pnlNow>=0?'+':'')+'R$ '+ev.pnlNow.toFixed(2)+'</span>'
+      + '</div>'
+      + '<div class="strat-metrics">'
+      + '<div class="metric"><div class="k">DTE úteis</div><div class="v">'+ev.dte+'</div></div>'
+      + '<div class="metric"><div class="k">Capturado</div><div class="v">'+ev.pct.toFixed(0)+'%</div><div class="prog"><i style="width:'+pctClamp+'%"></i></div></div>'
+      + '<div class="metric"><div class="k">Dist. BE</div><div class="v">'+(ev.nearestBe?ev.nearestDist.toFixed(1)+'%':'—')+'</div></div>'
+      + '<div class="metric"><div class="k">P&amp;L / capital</div><div class="v '+plCls+'">'+(CAPITAL>0?((ev.pnlNow/CAPITAL*100).toFixed(3)+'%'):'—')+'</div></div>'
+      + '</div>'
+      + '<div class="strat-body">'
+      + '<table><thead><tr><th>Perna</th><th>Qtd</th><th>Entrada</th><th>Último</th><th>Δ perna</th><th>P&amp;L</th></tr></thead><tbody>'+legsRows+'</tbody></table>'
+      + '<div class="delta-note">⚠ Deltas por perna são estimativas do desk quando a API não retorna direto — calibração pendente.</div>'
+      + renderGreeksBlock(calcPositionGreeks(ev.legs))
+      + '<div class="diag"><div class="dtitle">Diagnóstico da estrutura · gates 1–4</div>'
+      + '<div class="gates">'+gatesHtml+'</div>'
+      + '<div style="margin-top:10px">'+legLines+'</div>'
+      + '<div class="diag-action">Ação recomendada: <b>'+ev.roll.label+'.</b> '+ev.roll.desc+'</div>'
+      + '<div class="diag-port">5. Nível B e 6. Stress são avaliados no nível carteira, não por estrutura — ver cards acima.</div>'
+      + '</div></div></div>';
+  });
+  container.innerHTML = html;
+}
+function toggleStrat(i){ var el=document.getElementById('st'+i); if (el) el.classList.toggle('open'); }
+
+// ─── RENDER: VIÉS DIRECIONAL ─────────────────────────────────────────────────
+function indRow(nome, sinal, texto, peso){
+  var cls = sinal>0?'b-alta':sinal<0?'b-baixa':'b-neu';
+  var label = sinal>0?'ALTA':sinal<0?'BAIXA':'NEUTRO';
+  return '<div class="ind"><span>'+nome+' <span class="d">'+texto+'</span></span><span class="badge '+cls+'">'+label+' · peso '+peso+'</span></div>';
+}
+function renderViesBody(){
+  var box=document.getElementById('viesBody'); if (!box) return;
+  if (!viesData || viesData.length<50){ box.innerHTML='<div class="muted">Dados históricos insuficientes.</div>'; return; }
+  var closes=viesData.map(function(c){return c.close;});
+  var spot=spotData.close||closes[closes.length-1];
+  var mm20=sma(closes,20), mm50=sma(closes,50);
+  var mmSignal=0, mmTexto='';
+  if (mm20&&mm50){
+    if (spot>mm20&&mm20>mm50){ mmSignal=1; mmTexto='Preço acima das médias, MM20 > MM50 — tendência de alta'; }
+    else if (spot<mm20&&mm20<mm50){ mmSignal=-1; mmTexto='Preço abaixo das médias, MM20 < MM50 — tendência de baixa'; }
+    else mmTexto='Médias entrelaçadas — sem tendência definida';
+  }
+  var rsi=calcRSI(closes,14), rsiSignal=0, rsiTexto='';
+  if (rsi!=null){
+    if (rsi>70){ rsiSignal=-1; rsiTexto='RSI '+rsi.toFixed(0)+' — sobrecomprado'; }
+    else if (rsi<30){ rsiSignal=1; rsiTexto='RSI '+rsi.toFixed(0)+' — sobrevendido'; }
+    else if (rsi>55){ rsiSignal=1; rsiTexto='RSI '+rsi.toFixed(0)+' — momentum comprador'; }
+    else if (rsi<45){ rsiSignal=-1; rsiTexto='RSI '+rsi.toFixed(0)+' — momentum vendedor'; }
+    else rsiTexto='RSI '+rsi.toFixed(0)+' — neutro';
+  }
+  var macd=calcMACD(closes), macdSignal=0, macdTexto='';
+  if (macd){
+    if (macd.hist>0&&macd.macd>0){ macdSignal=1; macdTexto='MACD acima do sinal e positivo — confirma alta'; }
+    else if (macd.hist<0&&macd.macd<0){ macdSignal=-1; macdTexto='MACD abaixo do sinal e negativo — confirma baixa'; }
+    else if (macd.hist>0){ macdSignal=1; macdTexto='Histograma virando positivo'; }
+    else { macdSignal=-1; macdTexto='Histograma negativo'; }
+  }
+  var distMM20 = mm20 ? ((spot-mm20)/mm20*100) : 0;
+  var exaustSignal=0, exaustTexto='';
+  if (Math.abs(distMM20)>5){ exaustSignal = distMM20>0?-1:1; exaustTexto='Preço '+Math.abs(distMM20).toFixed(1)+'% '+(distMM20>0?'acima':'abaixo')+' da MM20 — esticado'; }
+  else exaustTexto='Preço '+Math.abs(distMM20).toFixed(1)+'% da MM20 — normal';
+  var pesos={mm:4,rsi:3,macd:2,exaust:1};
+  var scoreTotal=mmSignal*pesos.mm+rsiSignal*pesos.rsi+macdSignal*pesos.macd+exaustSignal*pesos.exaust;
+  var scoreMax=pesos.mm+pesos.rsi+pesos.macd+pesos.exaust;
+  var scorePct=scoreTotal/scoreMax;
+  var sem,semCls,semDesc;
+  if (scorePct>=0.35){ sem='VIÉS DE ALTA'; semCls='green'; semDesc='Condições favorecem VENDA DE PUT'; }
+  else if (scorePct<=-0.35){ sem='VIÉS DE BAIXA'; semCls='red'; semDesc='Condições favorecem VENDA DE CALL'; }
+  else { sem='NEUTRO'; semCls='muted'; semDesc='Sem viés claro — prefira venda de volatilidade ou aguarde'; }
+  box.innerHTML =
+    '<div style="font-size:20px;font-weight:700" class="'+semCls+'">'+sem+' <span style="font-size:12px;font-weight:400">— '+semDesc+'</span></div>'
+    + '<div class="bias-bar"><i style="background:var(--red)"></i><i style="background:var(--muted)"></i><i style="background:var(--green)"></i></div>'
+    + '<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted)"><span>BAIXA (venda call)</span><span>NEUTRO</span><span>ALTA (venda put)</span></div>'
+    + '<div style="margin-top:12px">'
+    + indRow('1. Médias Móveis', mmSignal, mmTexto, pesos.mm)
+    + indRow('2. RSI 14', rsiSignal, rsiTexto, pesos.rsi)
+    + indRow('3. MACD', macdSignal, macdTexto, pesos.macd)
+    + indRow('4. Distância da MM20', exaustSignal, exaustTexto, pesos.exaust)
+    + '</div>'
+    + '<div style="font-size:11px;color:var(--muted);margin-top:10px">Spot R$'+spot.toFixed(2)+' · MM20 R$'+(mm20?mm20.toFixed(2):'—')+' · MM50 R$'+(mm50?mm50.toFixed(2):'—')+' · RSI '+(rsi?rsi.toFixed(0):'—')+' · MACD '+(macd?macd.macd.toFixed(2):'—')+'</div>';
+  viesData.semaforo=sem; viesData.scorePct=scorePct;
+}
+
+// ─── RENDER: RADAR DE OPORTUNIDADES (SÓ STRANGLE) ────────────────────────────
+function renderOportRadar(){
+  var spot=spotData.close||0;
+  var sBody=document.getElementById('strangleBody'), dBody=document.getElementById('dirBody');
+  if (!sBody||!dBody) return;
+  if (!spot || !seriesInfo.series){ sBody.innerHTML='<tr><td colspan="6" class="muted">Aguardando dados de mercado.</td></tr>'; dBody.innerHTML='<tr><td colspan="8" class="muted">Aguardando dados de mercado.</td></tr>'; return; }
+  var mensais = seriesInfo.series.filter(function(s){ return isMonthlyExpiry(s.due_date)&&s.days_to_maturity>=10; }).slice(0,3);
+  if (!mensais.length){ sBody.innerHTML='<tr><td colspan="6" class="muted">Nenhum vencimento mensal disponível.</td></tr>'; dBody.innerHTML='<tr><td colspan="8" class="muted">Nenhum vencimento mensal disponível.</td></tr>'; return; }
+  function getDelta(o){ return o.bs?(o.bs.delta||0):0; }
+  function getMid(o){ var bid=o.bid||0, ask=o.ask||0; if (bid>0&&ask>0) return (bid+ask)/2; return o.close||0; }
+  function validOpt(o){ return o&&o.symbol&&(o.bid>0)&&o.bs&&Math.abs(o.bs.delta||0)>=0.05&&Math.abs(o.bs.delta||0)<=0.95; }
+  function findByDelta(list,target){ if (!list.length) return null; return list.slice().sort(function(a,b){ return Math.abs(Math.abs(getDelta(a))-target)-Math.abs(Math.abs(getDelta(b))-target); })[0]; }
+  function retAnual(credito,strike,dte){ var risco=strike-credito; if (risco<=0||dte<=0) return 0; return (credito/risco)*(252/dte)*100; }
+  var volOps=[], dirOps=[];
+  mensais.forEach(function(serie){
+    var dte=serie.days_to_maturity, calls=[], puts=[];
+    (serie.strikes||[]).forEach(function(sk){
+      if (validOpt(sk.call)&&sk.strike>=spot*0.80&&sk.strike<=spot*1.20) calls.push(Object.assign({},sk.call,{strike:sk.strike}));
+      if (validOpt(sk.put)&&sk.strike>=spot*0.80&&sk.strike<=spot*1.20) puts.push(Object.assign({},sk.put,{strike:sk.strike}));
+    });
+    if (!calls.length||!puts.length) return;
+    var callsOtm=calls.filter(function(o){return o.strike>spot;});
+    var putsOtm=puts.filter(function(o){return o.strike<spot;});
+    [{d:0.15,n:'Δ15'},{d:0.22,n:'Δ22'},{d:0.30,n:'Δ30'}].forEach(function(lvl){
+      var gc=findByDelta(callsOtm.length?callsOtm:calls, lvl.d);
+      var gp=findByDelta(putsOtm.length?putsOtm:puts, lvl.d);
+      if (gc&&gp&&gc.strike!==gp.strike){
+        var cr=getMid(gc)+getMid(gp);
+        volOps.push({ sub:lvl.n, venc:serie.due_date, dte:dte, call:gc, put:gp, credito:cr,
+          beInf:gp.strike-cr, beSup:gc.strike+cr, pop:Math.max(0,1-Math.abs(getDelta(gc))-Math.abs(getDelta(gp))) });
+      }
+    });
+    [{d:0.15,n:'Δ15'},{d:0.20,n:'Δ20'},{d:0.30,n:'Δ30'}].forEach(function(lvl){
+      var p=findByDelta(putsOtm.length?putsOtm:puts, lvl.d);
+      if (p){ var crP=getMid(p); dirOps.push({ tipo:'Venda PUT', venc:serie.due_date, dte:dte, credito:crP, strike:p.strike,
+        be:p.strike-crP, delta:Math.abs(getDelta(p)), pop:Math.max(0,1-Math.abs(getDelta(p))), retAnual:retAnual(crP,p.strike,dte) }); }
+      var c=findByDelta(callsOtm.length?callsOtm:calls, lvl.d);
+      if (c){ var crC=getMid(c); dirOps.push({ tipo:'Venda CALL', venc:serie.due_date, dte:dte, credito:crC, strike:c.strike,
+        be:c.strike+crC, delta:Math.abs(getDelta(c)), pop:Math.max(0,1-Math.abs(getDelta(c))), retAnual:retAnual(crC,c.strike,dte) }); }
+    });
+  });
+  if (!volOps.length) sBody.innerHTML='<tr><td colspan="6" class="muted">Sem strangles com liquidez suficiente.</td></tr>';
+  else {
+    volOps.sort(function(a,b){ return b.credito-a.credito; });
+    sBody.innerHTML = volOps.map(function(o){
+      return '<tr><td>'+o.sub+'</td><td>'+fmtDate(o.venc)+'·'+o.dte+'du</td>'
+        + '<td>CK'+o.call.strike.toFixed(0)+' PK'+o.put.strike.toFixed(0)+'</td>'
+        + '<td class="green">R$'+o.credito.toFixed(2)+'</td>'
+        + '<td class="'+(o.pop>=0.6?'green':o.pop>=0.5?'amber':'red')+'">'+(o.pop*100).toFixed(0)+'%</td>'
+        + '<td>'+o.beInf.toFixed(2)+' / '+o.beSup.toFixed(2)+'</td></tr>';
+    }).join('');
+  }
+  var allDir = dirOps.slice().sort(function(a,b){ return b.retAnual-a.retAnual; });
+  if (!allDir.length) dBody.innerHTML='<tr><td colspan="8" class="muted">Sem direcionais com liquidez suficiente.</td></tr>';
+  else dBody.innerHTML = allDir.map(function(o){
+    return '<tr><td>'+o.tipo+'</td><td>'+o.delta.toFixed(2)+'</td><td>'+fmtDate(o.venc)+'·'+o.dte+'du</td>'
+      + '<td>'+o.strike.toFixed(0)+'</td><td class="green">R$'+o.credito.toFixed(2)+'</td>'
+      + '<td>'+(o.pop*100).toFixed(0)+'%</td><td class="cyan">'+o.retAnual.toFixed(1)+'%</td><td>'+o.be.toFixed(2)+'</td></tr>';
+  }).join('');
+}
+
+// ─── SNAPSHOT ────────────────────────────────────────────────────────────────
+function buildSnap(){
+  var spot=spotData.close||0;
+  var vp = spotData.variation || (spotData.open ? (spot-spotData.open)/spotData.open*100 : 0);
+  var s = '=== SNAPSHOT BOVA11 · '+new Date().toLocaleString('pt-BR')+' ===\n';
+  s += 'Spot: R$ '+spot.toFixed(2)+' ('+(vp>=0?'+':'')+vp.toFixed(2)+'%) | IV: '+(radarData.ivCur||0).toFixed(2)+'% | IV Rank: '+(radarData.ivRank||0).toFixed(1)+'\n';
+  var ivPct=normIvPct(radarData.ivCur)||20;
+  var sigma5d = spot*(ivPct/100)*Math.sqrt(5/252);
+  s += '1σ (5d): ±R$'+sigma5d.toFixed(2)+' (±'+(spot>0?(sigma5d/spot*100).toFixed(2):'0')+'%) | faixa '+(spot-sigma5d).toFixed(2)+' / '+(spot+sigma5d).toFixed(2)+'\n\n';
+  s += 'POSIÇÕES:\n';
+  var totalPnl=0;
+  var withLegs = curPositions.filter(function(p){ return (p.details&&p.details.legs&&p.details.legs.length); });
+  if (!withLegs.length) s += '  Nenhuma posição aberta.\n';
+  withLegs.forEach(function(pos){
+    var legs=(pos.details&&pos.details.legs)||[];
+    var ev = evaluateStructure(pos);
+    totalPnl += ev.pnlNow;
+    s += '['+(pos.name||'pos')+'] '+ev.dte+'du | '+ev.roll.label.toUpperCase()+' | P&L '+(ev.pnlNow>=0?'+':'')+'R$'+ev.pnlNow.toFixed(2)+' ('+ev.pct.toFixed(0)+'% capturado)\n';
+    ev.tr.legs.forEach(function(x){
+      s += '  '+x.tipo+' K'+x.strike.toFixed(0)+' '+(x.absDelta*100).toFixed(0)+'Δ⚠ dispara em '+(x.triggerPx?'R$'+x.triggerPx.toFixed(2):'—')+'\n';
+    });
+  });
+  s += '\nP&L TOTAL: '+(totalPnl>=0?'+':'')+'R$'+totalPnl.toFixed(2)+'\n';
+  s += '⚠ Deltas por perna são estimativas do desk (calibração vs. Oplab pendente)\n';
+  if (viesData && viesData.semaforo) s += '\nVIÉS: '+viesData.semaforo+'\n';
+  document.getElementById('snapshot').textContent = s;
+}
 function copySnap(){
   var text=document.getElementById('snapshot').textContent;
   navigator.clipboard.writeText(text).then(function(){
@@ -380,61 +1014,56 @@ function copySnap(){
   });
 }
 
-var legsData=[
-  [{tipo:'CALL',k:180,qtd:4000,ent:2.68},{tipo:'PUT',k:152,qtd:4000,ent:1.45}],
-  [{tipo:'CALL',k:170,qtd:300,ent:6.04}]
-];
-function payoffAt(S,mode){
-  var idx = (mode==='all') ? [0,1] : [mode];
-  var v=0;
-  for(var a=0;a<idx.length;a++){
-    var legs=legsData[idx[a]];
-    for(var b=0;b<legs.length;b++){
-      var l=legs[b];
-      var intr = (l.tipo==='CALL') ? Math.max(0,S-l.k) : Math.max(0,l.k-S);
-      v += (l.ent-intr)*l.qtd;
+// ─── ORQUESTRAÇÃO / AUTO-REFRESH ─────────────────────────────────────────────
+async function refreshAll(){
+  var ico=document.getElementById('rico');
+  if (ico) ico.style.display='inline-block';
+  try{
+    await Promise.all([loadSpot(), loadSeries(), loadStrategies(), loadVolatility()]);
+    await loadRadarVxbr();
+    await loadVies();
+    renderHeaderSpot();
+    renderIvCard();
+    onCapitalInput(document.getElementById('capIn').value);
+    renderPnlAndStressCards();
+    buildPayoffTabsUI();
+    renderEstruturas(curPositions);
+    renderViesBody();
+    renderOportRadar();
+    buildSnap();
+  }catch(e){ console.error(e); }
+  document.getElementById('lastUpd').textContent = 'Atualizado: '+new Date().toLocaleTimeString('pt-BR');
+}
+function toggleAuto(){
+  var chk=document.getElementById('autoChk');
+  if (chk.checked) autoTimer=setInterval(refreshAll, 30000);
+  else { clearInterval(autoTimer); autoTimer=null; }
+}
+
+(function init(){
+  function restoreAndStart(){
+    var savedCap = parseFloat(lsGet(LS_KEYS.capital,''));
+    var capInput = document.getElementById('capIn');
+    if (savedCap>0){ CAPITAL=savedCap; CAPITAL_CONFIRMADO=true; capInput.value=CAPITAL; }
+    else { capInput.value=''; CAPITAL_CONFIRMADO=false; }
+    var savedVx = parseFloat(lsGet(LS_KEYS.vxbr,''));
+    if (savedVx>0){ radarData.vxbr=savedVx; document.getElementById('vxbrIn').value=savedVx.toFixed(2); }
+    var saved = lsGet(LS_KEYS.oplabToken, '');
+    var el = document.getElementById('apiKey');
+    if (el && saved){
+      el.value = saved;
+      tok = saved;
+      window._apiKey = saved;
+      document.getElementById('gate').classList.add('hidden');
+      document.getElementById('app').classList.remove('hidden');
+      refreshAll();
+      return;
     }
+    if (el) el.focus();
   }
-  return v;
-}
-function setPayoff(mode,btn){
-  var tabs=btn.parentElement.children;
-  for(var i=0;i<tabs.length;i++){ tabs[i].classList.remove('active'); }
-  btn.classList.add('active');
-  drawPayoff(mode);
-}
-function drawPayoff(mode){
-  var cv=document.getElementById('payoff'), ctx=cv.getContext('2d');
-  var W=cv.width, H=cv.height, lo=135, hi=195, pad=40, spot=162.74;
-  function xs(S){ return pad+(S-lo)/(hi-lo)*(W-2*pad); }
-  var vals=[];
-  for(var S=lo; S<=hi; S+=0.5){ vals.push(payoffAt(S,mode)); }
-  var vmax=vals[0], vmin=vals[0];
-  for(var i=0;i<vals.length;i++){ if(vals[i]>vmax) vmax=vals[i]; if(vals[i]<vmin) vmin=vals[i]; }
-  function ys(v){ return H-pad-(v-vmin)/((vmax-vmin)||1)*(H-2*pad); }
-  ctx.clearRect(0,0,W,H);
-  var bes=[];
-  for(var s=lo; s<hi; s+=0.1){ if(payoffAt(s,mode)*payoffAt(s+0.1,mode)<0){ bes.push(s); } }
-  if(bes.length>=2){
-    ctx.fillStyle='rgba(46,194,106,.12)';
-    ctx.fillRect(xs(bes[0]),pad,xs(bes[bes.length-1])-xs(bes[0]),H-2*pad);
-  }
-  ctx.strokeStyle='#2a3542'; ctx.beginPath(); ctx.moveTo(pad,ys(0)); ctx.lineTo(W-pad,ys(0)); ctx.stroke();
-  ctx.strokeStyle='#4fd1ff'; ctx.lineWidth=2; ctx.beginPath();
-  for(var j=0;j<vals.length;j++){
-    var Sx=lo+j*0.5;
-    if(j===0){ ctx.moveTo(xs(Sx),ys(vals[j])); } else { ctx.lineTo(xs(Sx),ys(vals[j])); }
-  }
-  ctx.stroke();
-  ctx.strokeStyle='#e8e8e8'; ctx.setLineDash([4,4]); ctx.beginPath();
-  ctx.moveTo(xs(spot),pad); ctx.lineTo(xs(spot),H-pad); ctx.stroke(); ctx.setLineDash([]);
-  ctx.fillStyle='#e8e8e8'; ctx.font='11px monospace'; ctx.fillText('spot 162,74',xs(spot)+4,pad+12);
-  ctx.fillStyle='#2ec26a';
-  for(var m=0;m<bes.length;m++){
-    ctx.beginPath(); ctx.arc(xs(bes[m]),ys(0),4,0,7); ctx.fill();
-    ctx.fillText('BE '+bes[m].toFixed(1),xs(bes[m])-18,ys(0)+18);
-  }
-}
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', restoreAndStart);
+  else restoreAndStart();
+})();
 </script>
 </body>
 </html>
