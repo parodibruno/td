@@ -113,7 +113,7 @@ canvas{width:100%;height:260px;display:block;background:var(--panel2);border-rad
     <div style="margin-top:10px">
       <button onclick="handleLogin()" style="width:100%;padding:12px 16px">Entrar →</button>
     </div>
-    <div class="ver">v4.1</div>
+    <div class="ver">v4.2</div>
   </div>
 </div>
 
@@ -988,6 +988,7 @@ function buildSnap(){
   s += '1σ (5d): ±R$'+sigma5d.toFixed(2)+' (±'+(spot>0?(sigma5d/spot*100).toFixed(2):'0')+'%) | faixa '+(spot-sigma5d).toFixed(2)+' / '+(spot+sigma5d).toFixed(2)+'\n\n';
   s += 'POSIÇÕES:\n';
   var totalPnl=0;
+  var cache = buildGreeksCache();
   var withLegs = curPositions.filter(function(p){ return (p.details&&p.details.legs&&p.details.legs.length); });
   if (!withLegs.length) s += '  Nenhuma posição aberta.\n';
   withLegs.forEach(function(pos){
@@ -995,12 +996,25 @@ function buildSnap(){
     var ev = evaluateStructure(pos);
     totalPnl += ev.pnlNow;
     s += '['+(pos.name||'pos')+'] '+ev.dte+'du | '+ev.roll.label.toUpperCase()+' | P&L '+(ev.pnlNow>=0?'+':'')+'R$'+ev.pnlNow.toFixed(2)+' ('+ev.pct.toFixed(0)+'% capturado)\n';
+    legs.forEach(function(leg){
+      var og = cache[leg.symbol||''];
+      var fonte = (og && Math.abs(og.delta)>0.0001) ? 'API' : 'BS(estimado)';
+      var rawDelta = (og && Math.abs(og.delta)>0.0001) ? og.delta : null;
+      var sd = getLegSignedDelta(leg);
+      s += '  '+(leg.symbol||'?')+' '+(leg['instrument-type']||'')+' K'+(leg.strike||0)+' | '+((leg.type||'SELL')==='SELL'?'V':'C')+' '+Math.abs(leg.amount||0)
+        + ' | delta bruto:'+(rawDelta!=null?rawDelta.toFixed(4):'—')+' ['+fonte+']'
+        + ' | delta líquido:'+(sd.value!=null?(sd.value>=0?'+':'')+sd.value.toFixed(4):'—')
+        + ' | entrada:'+(leg['price-in']||0).toFixed(2)+' atual:'+(leg.close||0).toFixed(2)+'\n';
+    });
+    var g = calcPositionGreeks(legs);
+    s += '  Gregas agregadas desta estrutura: Δ'+g.delta.toFixed(0)+' Θ'+g.theta.toFixed(0)+' Γ'+g.gamma.toFixed(1)+' ν'+g.vega.toFixed(0)+'\n';
     ev.tr.legs.forEach(function(x){
-      s += '  '+x.tipo+' K'+x.strike.toFixed(0)+' '+(x.absDelta*100).toFixed(0)+'Δ⚠ dispara em '+(x.triggerPx?'R$'+x.triggerPx.toFixed(2):'—')+'\n';
+      s += '  [gatilho] '+x.tipo+' K'+x.strike.toFixed(0)+' '+(x.absDelta*100).toFixed(0)+'Δ dispara em '+(x.triggerPx?'R$'+x.triggerPx.toFixed(2):'—')+'\n';
     });
   });
   s += '\nP&L TOTAL: '+(totalPnl>=0?'+':'')+'R$'+totalPnl.toFixed(2)+'\n';
-  s += '⚠ Deltas por perna são estimativas do desk (calibração vs. Oplab pendente)\n';
+  s += 'delta bruto = delta cru da opção (sinal padrão: call>0, put<0), como vem da API ou estimado via Black-Scholes.\n';
+  s += 'delta líquido = já considera venda/compra e quantidade (o que soma no Δ agregado do card).\n';
   if (viesData && viesData.semaforo) s += '\nVIÉS: '+viesData.semaforo+'\n';
   document.getElementById('snapshot').textContent = s;
 }
