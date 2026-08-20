@@ -113,7 +113,7 @@ canvas{width:100%;height:260px;display:block;background:var(--panel2);border-rad
     <div style="margin-top:10px">
       <button onclick="handleLogin()" style="width:100%;padding:12px 16px">Entrar →</button>
     </div>
-    <div class="ver">v4.3</div>
+    <div class="ver">v4.4</div>
   </div>
 </div>
 
@@ -396,6 +396,47 @@ function buildGreeksCache(){
   });
   return cache;
 }
+// V4.4 — a cadeia de opções (/instruments/series) parece devolver delta calculado
+// com uma vol mais achatada perto da ATM, subestimando o delta de opções OTM
+// que têm vol implícita mais alta (skew). Isso batia mal contra a tela de
+// posições do Oplab (delta real ~2x maior que o nosso em opções ~9% OTM).
+// Correção: resolve a vol implícita a partir do PREÇO DE MERCADO de cada perna
+// (mid do bid/ask, ou último) via bissecção sobre bsPrice, e deriva as gregas
+// dessa vol — é o mesmo princípio que uma tela de posições precisa usar,
+// já que aí sim a vol reflete a opção específica, não uma referência genérica.
+function impliedVol(spot, strike, dte_days, targetPrice, isCall){
+  if (!spot||!strike||dte_days<=0||!targetPrice||targetPrice<=0) return null;
+  var lo=0.01, hi=3.0;
+  var pLo = bsPrice(spot, strike, dte_days, lo, isCall);
+  var pHi = bsPrice(spot, strike, dte_days, hi, isCall);
+  if (pLo==null || pHi==null) return null;
+  if (targetPrice <= pLo) return lo*100;
+  if (targetPrice >= pHi) return null; // preço fora da faixa plausível de vol
+  for (var i=0;i<60;i++){
+    var mid=(lo+hi)/2;
+    var price=bsPrice(spot, strike, dte_days, mid, isCall);
+    if (price==null) return null;
+    if (price<targetPrice) lo=mid; else hi=mid;
+  }
+  return (lo+hi)/2*100;
+}
+// Gregas de uma perna a partir do PREÇO DE MERCADO dela (não da cadeia).
+// Retorna null se não der pra resolver (sem preço, sem spot, etc.) — quem
+// chama decide o fallback (cache da cadeia ou vol de referência).
+function getLegMarketGreeks(leg){
+  var spot=spotData.close||0;
+  var strike=leg.strike||0;
+  var dte=leg['days-to-maturity']||0;
+  var isCall=(leg['instrument-type']==='CALL');
+  var bid=leg.bid||0, ask=leg.ask||0, close=leg.close||0;
+  var price = (bid>0&&ask>0) ? (bid+ask)/2 : (close>0?close:0);
+  if (!spot||!strike||dte<=0||!price) return null;
+  var ivPct = impliedVol(spot, strike, dte, price, isCall);
+  if (ivPct==null) return null;
+  var g = bsGreeks(spot, strike, dte, ivPct, isCall);
+  if (!g) return null;
+  return { delta:g.delta, theta:g.theta, gamma:g.gamma, vega:g.vega, iv:ivPct, price:price };
+}
 function triggerPriceForLeg(leg, dte, ivPct, target){
   var isCall = (leg['instrument-type']==='CALL');
   var K = leg.strike||0;
@@ -425,6 +466,13 @@ function calcPositionGreeks(legs){
     var isCall=(leg['instrument-type']==='CALL');
     var dte=leg['days-to-maturity']||0;
     var strike=leg.strike||0;
+    // V4.4 — prioridade 1: vol implícita a partir do PREÇO desta perna (bid/ask/close),
+    // que é o que bate com a tela de posições do Oplab (reflete o skew real).
+    var mg = getLegMarketGreeks(leg);
+    if (mg){
+      g.delta+=mg.delta*qty*sign; g.theta+=mg.theta*qty*sign; g.gamma+=mg.gamma*qty*sign; g.vega+=mg.vega*qty*sign; g.found++;
+      return;
+    }
     var og=cache[sym];
     var hasApi = og && (Math.abs(og.delta)>0.0001||Math.abs(og.gamma)>0.0000001||Math.abs(og.vega)>0.0001);
     if (hasApi){
@@ -439,17 +487,21 @@ function calcPositionGreeks(legs){
   return g;
 }
 function getLegSignedDelta(leg){
-  var cache = buildGreeksCache();
-  var og = cache[leg.symbol||''];
   var sign = (leg.type||'SELL')==='SELL' ? -1 : 1;
   var isCall = (leg['instrument-type']==='CALL');
+  // V4.4 — mesma prioridade de calcPositionGreeks: vol implícita do preço de
+  // mercado da própria perna primeiro (bate com a tela de posições do Oplab).
+  var mg = getLegMarketGreeks(leg);
+  if (mg) return { value: mg.delta*sign*-1, estimado:false, fonte:'mercado', iv:mg.iv };
+  var cache = buildGreeksCache();
+  var og = cache[leg.symbol||''];
   var hasApi = og && Math.abs(og.delta)>0.0001;
-  if (hasApi) return { value: og.delta*sign*-1, estimado:false };
+  if (hasApi) return { value: og.delta*sign*-1, estimado:false, fonte:'cadeia' };
   var spot=spotData.close||0, strike=leg.strike||0, dte=leg['days-to-maturity']||0;
   var ivPct = normIvPct(radarData.ivCur)||20;
   var bs=bsGreeks(spot,strike,dte,ivPct,isCall);
-  if (!bs) return { value:null, estimado:true };
-  return { value: bs.delta*sign*-1, estimado:true };
+  if (!bs) return { value:null, estimado:true, fonte:'—' };
+  return { value: bs.delta*sign*-1, estimado:true, fonte:'BS vol ref.' };
 }
 function isMonthlyExpiry(dateStr){
   if (!dateStr) return false;
@@ -516,11 +568,16 @@ function checkRollTriggers(pos){
   var ivRef=normIvPct(radarData.ivCur)||20;
   var spot=spotData.close||0;
   var info = abertas.map(function(leg){
-    var og=cache[leg.symbol||''];
-    var d=(og&&Math.abs(og.delta)>0.0001)?og.delta:null;
     var legDte=leg['days-to-maturity']||dte;
-    if (d===null){ var bs=bsGreeks(spot,leg.strike||0,legDte,ivRef,leg['instrument-type']==='CALL'); d=bs?bs.delta:0; }
-    var ivLeg=(og&&og.iv>0)?normIvPct(og.iv):ivRef;
+    var mg = getLegMarketGreeks(leg);
+    var d, ivLeg;
+    if (mg){ d = mg.delta; ivLeg = mg.iv; }
+    else {
+      var og=cache[leg.symbol||''];
+      d=(og&&Math.abs(og.delta)>0.0001)?og.delta:null;
+      if (d===null){ var bs=bsGreeks(spot,leg.strike||0,legDte,ivRef,leg['instrument-type']==='CALL'); d=bs?bs.delta:0; }
+      ivLeg=(og&&og.iv>0)?normIvPct(og.iv):ivRef;
+    }
     return { leg:leg, tipo:leg['instrument-type']||'', strike:leg.strike||0, delta:d, absDelta:Math.abs(d),
       breach:Math.abs(d)>=trigger, triggerPx:triggerPriceForLeg(leg,legDte,ivLeg,trigger) };
   });
@@ -1005,12 +1062,14 @@ function buildSnap(){
     totalPnl += ev.pnlNow;
     s += '['+(pos.name||'pos')+'] '+ev.dte+'du | '+ev.roll.label.toUpperCase()+' | P&L '+(ev.pnlNow>=0?'+':'')+'R$'+ev.pnlNow.toFixed(2)+' ('+ev.pct.toFixed(0)+'% capturado)\n';
     legs.forEach(function(leg){
+      var mg = getLegMarketGreeks(leg);
       var og = cache[leg.symbol||''];
-      var fonte = (og && Math.abs(og.delta)>0.0001) ? 'API' : 'BS(estimado)';
-      var rawDelta = (og && Math.abs(og.delta)>0.0001) ? og.delta : null;
       var sd = getLegSignedDelta(leg);
+      var deltaBruto = mg ? mg.delta : ((og && Math.abs(og.delta)>0.0001) ? og.delta : null);
+      var ivTxt = mg ? mg.iv.toFixed(2)+'% (mercado)' : (og&&og.iv>0 ? normIvPct(og.iv).toFixed(2)+'% (cadeia)' : '—');
       s += '  '+(leg.symbol||'?')+' '+(leg['instrument-type']||'')+' K'+(leg.strike||0)+' | '+((leg.type||'SELL')==='SELL'?'V':'C')+' '+Math.abs(leg.amount||0)
-        + ' | delta bruto:'+(rawDelta!=null?rawDelta.toFixed(4):'—')+' ['+fonte+']'
+        + ' | delta bruto:'+(deltaBruto!=null?deltaBruto.toFixed(4):'—')+' ['+sd.fonte+']'
+        + ' | vol implícita:'+ivTxt
         + ' | delta líquido:'+(sd.value!=null?(sd.value>=0?'+':'')+sd.value.toFixed(4):'—')
         + ' | entrada:'+(leg['price-in']||0).toFixed(2)+' atual:'+(leg.close||0).toFixed(2)+'\n';
     });
