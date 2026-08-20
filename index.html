@@ -113,7 +113,7 @@ canvas{width:100%;height:260px;display:block;background:var(--panel2);border-rad
     <div style="margin-top:10px">
       <button onclick="handleLogin()" style="width:100%;padding:12px 16px">Entrar →</button>
     </div>
-    <div class="ver">v4.5</div>
+    <div class="ver">v4.6</div>
   </div>
 </div>
 
@@ -145,13 +145,6 @@ canvas{width:100%;height:260px;display:block;background:var(--panel2);border-rad
       <div class="kv"><span class="k">% do capital</span><span class="v cyan" id="pnlPct">—</span></div>
       <div class="kv"><span class="k">Estruturas</span><span class="v" id="pnlEstruturas">—</span></div>
       <div class="kv"><span class="k">Pernas abertas</span><span class="v" id="pnlPernas">—</span></div>
-    </div>
-    <div class="card">
-      <div class="lbl">BOVA11 · Spot</div>
-      <div class="kv"><span class="k">Último</span><span class="v" id="spLast">—</span></div>
-      <div class="kv"><span class="k">Abertura</span><span class="v" id="spOpen">—</span></div>
-      <div class="kv"><span class="k">Máximo</span><span class="v green" id="spHigh">—</span></div>
-      <div class="kv"><span class="k">Mínimo</span><span class="v red" id="spLow">—</span></div>
     </div>
     <div class="card">
       <div class="lbl">Volatilidade Implícita</div>
@@ -550,6 +543,36 @@ function calcPayoffNow(legs){
   });
   return pnl;
 }
+// V4.6 — calcPayoffAtPrice() é o valor NO VENCIMENTO (só intrínseco). Pra um
+// cenário de estresse a poucos dias (5du), pernas OTM longe do strike dão
+// sempre o mesmo intrínseco (zero) pra qualquer spot próximo — por isso o
+// card de estresse mostrava os 4 cenários idênticos. O certo é reprecificar
+// a opção com valor de tempo, congelando a vol implícita atual e só
+// avançando o relógio (dte) e movendo o spot.
+function calcLegTheoPrice(leg, spotAt, dteRemaining){
+  var strike=leg.strike||0;
+  var isCall=(leg['instrument-type']==='CALL');
+  var ratePct=leg._rate;
+  var mg=getLegMarketGreeks(leg);
+  var iv = mg ? mg.iv : (normIvPct(radarData.ivCur)||20);
+  if (dteRemaining<=0) return isCall?Math.max(0,spotAt-strike):Math.max(0,strike-spotAt);
+  var price = bsPrice(spotAt, strike, dteRemaining, iv, isCall, ratePct);
+  return price!=null ? price : (isCall?Math.max(0,spotAt-strike):Math.max(0,strike-spotAt));
+}
+// Crédito recebido e custo pra desmontar agora, por estrutura.
+function calcCreditoEDesmonte(legs){
+  var credito=0, custoDesmontar=0;
+  legs.forEach(function(leg){
+    var qty=Math.abs(leg.amount||0); if (qty===0) return;
+    var pxIn=leg['price-in']||0;
+    var action=leg.type||'SELL';
+    var ask=leg.ask||0, bid=leg.bid||0, close=leg.close||0;
+    var refPrice = action==='SELL' ? (ask>0?ask:close) : (bid>0?bid:close);
+    if (action==='SELL'){ credito += pxIn*qty; custoDesmontar += refPrice*qty; }
+    else { credito -= pxIn*qty; custoDesmontar -= refPrice*qty; }
+  });
+  return { credito:credito, custoDesmontar:custoDesmontar };
+}
 function calcMetrics(pos){
   var legs=(pos&&pos.details&&pos.details.legs)||[];
   var outLegs=(pos&&pos.details&&pos.details.out)||[];
@@ -735,10 +758,6 @@ function renderHeaderSpot(){
   chip.textContent = (vp>=0?'+':'')+vp.toFixed(2)+'%';
   chip.style.background = vp>=0 ? 'rgba(46,194,106,.15)' : 'rgba(232,85,107,.15)';
   chip.style.color = vp>=0 ? 'var(--green)' : 'var(--red)';
-  document.getElementById('spLast').textContent='R$ '+price.toFixed(2);
-  document.getElementById('spOpen').textContent='R$ '+open.toFixed(2);
-  document.getElementById('spHigh').textContent='R$ '+(spotData.high||0).toFixed(2);
-  document.getElementById('spLow').textContent='R$ '+(spotData.low||0).toFixed(2);
 }
 function renderIvCard(){
   document.getElementById('ivBig').textContent = (radarData.ivCur||0).toFixed(2)+'%';
@@ -771,7 +790,18 @@ function renderPnlAndStressCards(){
   function pnlAt(mult){
     var s = spot + sigma5d*mult;
     var pnl=0;
-    allLegs.forEach(function(leg){ if((leg.amount||0)!==0) pnl += calcPayoffAtPrice([leg], s) - calcPayoffAtPrice([leg], spot) + calcPayoffNow([leg]); });
+    allLegs.forEach(function(leg){
+      var qty=leg.amount||0; if (qty===0) return;
+      var action = leg.type||'SELL';
+      var pxIn = leg['price-in']||0;
+      var dteNow = leg['days-to-maturity']||0;
+      var dteAhead = Math.max(0, dteNow-5);
+      var theoNow = calcLegTheoPrice(leg, spot, dteNow);
+      var theoAt  = calcLegTheoPrice(leg, s, dteAhead);
+      var pnlHoje = calcPayoffNow([leg]);
+      // pnlHoje (com bid/ask reais) + variação teórica do preço entre agora e o cenário
+      pnl += pnlHoje + (action==='SELL' ? (theoNow-theoAt)*qty : (theoAt-theoNow)*qty);
+    });
     return pnl;
   }
   var m2=pnlAt(-2), m1=pnlAt(-1), p1=pnlAt(1), p2=pnlAt(2);
@@ -866,7 +896,8 @@ function evaluateStructure(pos){
   else if (maxLeg && maxLeg.absDelta>=tr.trigger*0.85) gates.push({n:4,status:'warn',text:'Nível A ('+(maxLeg.absDelta*100).toFixed(0)+'Δ / gat. '+(tr.trigger*100).toFixed(0)+'Δ) — perna mais quente do book'});
   else gates.push({n:4,status:'ok',text:'Nível A (max '+(maxLeg?(maxLeg.absDelta*100).toFixed(0):'0')+'Δ / gat. '+(tr.trigger*100).toFixed(0)+'Δ) — OK'});
   var roll = getRolloverStage(legs, pct, dte, pos);
-  return { legs:abertas, tr:tr, bes:bes, nearestDist:nearestDist, nearestBe:nearestBe, pct:pct, dte:dte, pnlNow:pnlNow, m:m, gates:gates, roll:roll, spot:spot };
+  var cd = calcCreditoEDesmonte(legs);
+  return { legs:abertas, tr:tr, bes:bes, nearestDist:nearestDist, nearestBe:nearestBe, pct:pct, dte:dte, pnlNow:pnlNow, m:m, gates:gates, roll:roll, spot:spot, cd:cd };
 }
 function renderEstruturas(positions){
   var container=document.getElementById('strats');
@@ -910,6 +941,8 @@ function renderEstruturas(positions){
       + '<div class="metric"><div class="k">Capturado</div><div class="v">'+ev.pct.toFixed(0)+'%</div><div class="prog"><i style="width:'+pctClamp+'%"></i></div></div>'
       + '<div class="metric"><div class="k">Dist. BE</div><div class="v">'+(ev.nearestBe?ev.nearestDist.toFixed(1)+'%':'—')+'</div></div>'
       + '<div class="metric"><div class="k">P&amp;L / capital</div><div class="v '+plCls+'">'+(CAPITAL>0?((ev.pnlNow/CAPITAL*100).toFixed(3)+'%'):'—')+'</div></div>'
+      + '<div class="metric"><div class="k">Crédito recebido</div><div class="v green">R$ '+ev.cd.credito.toFixed(2)+'</div></div>'
+      + '<div class="metric"><div class="k">Custo p/ desmontar</div><div class="v amber">R$ '+ev.cd.custoDesmontar.toFixed(2)+'</div></div>'
       + '</div>'
       + '<div class="strat-body">'
       + '<table><thead><tr><th>Perna</th><th>Qtd</th><th>Entrada</th><th>Último</th><th>Δ perna</th><th>P&amp;L</th></tr></thead><tbody>'+legsRows+'</tbody></table>'
