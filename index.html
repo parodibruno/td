@@ -113,7 +113,7 @@ canvas{width:100%;height:260px;display:block;background:var(--panel2);border-rad
     <div style="margin-top:10px">
       <button onclick="handleLogin()" style="width:100%;padding:12px 16px">Entrar →</button>
     </div>
-    <div class="ver">v4.2</div>
+    <div class="ver">v4.3</div>
   </div>
 </div>
 
@@ -851,7 +851,15 @@ function renderEstruturas(positions){
       + '<div style="margin-top:10px">'+legLines+'</div>'
       + '<div class="diag-action">Ação recomendada: <b>'+ev.roll.label+'.</b> '+ev.roll.desc+'</div>'
       + '<div class="diag-port">5. Nível B e 6. Stress são avaliados no nível carteira, não por estrutura — ver cards acima.</div>'
-      + '</div></div></div>';
+      + '</div>'
+      + '<div class="diag" style="margin-top:8px">'
+      + '<div class="dtitle" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center" onclick="var el=this.nextElementSibling;var open=el.style.display===\'none\';el.style.display=open?\'block\':\'none\';this.querySelector(\'.dbg-hint\').textContent=open?\'clique para recolher\':\'clique para expandir\'">'
+      + '<span>🔧 Dados brutos da posição (debug)</span><span class="dbg-hint" style="color:var(--muted);font-weight:400;font-size:11px">clique para expandir</span></div>'
+      + '<div style="display:none;margin-top:8px">'
+      + '<button onclick="copyRawPos(\''+idx+'\')" id="rawBtn'+idx+'" style="margin-bottom:8px">📋 Copiar JSON</button>'
+      + '<pre id="rawJson'+idx+'" style="background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:10px;font-size:11px;white-space:pre-wrap;max-height:300px;overflow:auto">'+escapeHtml(JSON.stringify(pos,null,2))+'</pre>'
+      + '</div></div>'
+      + '</div></div>';
   });
   container.innerHTML = html;
 }
@@ -1017,6 +1025,19 @@ function buildSnap(){
   s += 'delta líquido = já considera venda/compra e quantidade (o que soma no Δ agregado do card).\n';
   if (viesData && viesData.semaforo) s += '\nVIÉS: '+viesData.semaforo+'\n';
   document.getElementById('snapshot').textContent = s;
+}
+function escapeHtml(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function copyRawPos(idx){
+  var el = document.getElementById('rawJson'+idx);
+  if (!el) return;
+  navigator.clipboard.writeText(el.textContent).then(function(){
+    var btn = document.getElementById('rawBtn'+idx);
+    var old = btn.textContent;
+    btn.textContent = '✓ Copiado!';
+    setTimeout(function(){ btn.textContent = old; }, 1500);
+  });
 }
 function copySnap(){
   var text=document.getElementById('snapshot').textContent;
