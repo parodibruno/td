@@ -961,7 +961,7 @@ function renderEstruturas(positions){
     }).join('');
     var legLines = ev.tr.legs.map(function(x){
       var distTxt = x.triggerPx ? (((x.triggerPx-ev.spot)/ev.spot*100)>=0?'+':'')+(((x.triggerPx-ev.spot)/ev.spot*100)).toFixed(1)+'%' : '—';
-      return '<div class="diag-leg"><span class="lname">'+x.tipo+' K'+x.strike.toFixed(0)+'</span>'
+      return '<div class="diag-leg"><span class="lname">'+(x.leg.symbol||'?')+' '+x.tipo+' K'+x.strike.toFixed(0)+'</span>'
         + '<span class="lstat">'+(x.absDelta*100).toFixed(0)+'Δ · gatilho '+(x.triggerPx?'R$ '+x.triggerPx.toFixed(2):'—')+' · dist. '+distTxt+'</span></div>';
     }).join('');
     html += '<div class="strat" id="st'+idx+'" style="border-left-color:'+mc.v+'">'
@@ -1155,7 +1155,7 @@ function buildSnap(){
     var g = calcPositionGreeks(legs);
     s += '  Gregas agregadas desta estrutura: Δ'+g.delta.toFixed(0)+' Θ'+g.theta.toFixed(0)+' Γ'+g.gamma.toFixed(1)+' ν'+g.vega.toFixed(0)+'\n';
     ev.tr.legs.forEach(function(x){
-      s += '  [gatilho] '+x.tipo+' K'+x.strike.toFixed(0)+' '+(x.absDelta*100).toFixed(0)+'Δ dispara em '+(x.triggerPx?'R$'+x.triggerPx.toFixed(2):'—')+'\n';
+      s += '  [gatilho] '+(x.leg.symbol||'?')+' '+x.tipo+' K'+x.strike.toFixed(0)+' '+(x.absDelta*100).toFixed(0)+'Δ dispara em '+(x.triggerPx?'R$'+x.triggerPx.toFixed(2):'—')+'\n';
     });
   });
   s += '\nP&L TOTAL: '+(totalPnl>=0?'+':'')+'R$'+totalPnl.toFixed(2)+'\n';
