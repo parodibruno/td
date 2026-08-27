@@ -136,6 +136,9 @@ canvas{width:100%;height:260px;display:block;background:var(--panel2);border-rad
     <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);cursor:pointer">
       <input type="checkbox" id="autoChk" onchange="toggleAuto()" style="width:auto;accent-color:var(--cyan)"> Auto (30s)
     </label>
+    <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);cursor:pointer" title="Dispara notificação do navegador quando uma estrutura muda de status (rolagem/encerrar) ou um gatilho fica desatualizado. Só funciona com Auto (30s) ligado e a aba aberta.">
+      <input type="checkbox" id="notifyChk" onchange="toggleNotify()" style="width:auto;accent-color:var(--cyan)"> 🔔 Notificar rolagem
+    </label>
     <span class="info" id="lastUpd"></span>
   </div>
 
@@ -235,7 +238,7 @@ VIÉS: NEUTRO (MM20 170,88 · RSI 26 · MACD -1,68)</pre>
 
 <script>
 // ─── PERSISTENCIA (localStorage) ────────────────────────────────────────────
-var LS_KEYS = { oplabToken:'td_oplab_token', capital:'td_capital', vxbr:'td_vxbr' };
+var LS_KEYS = { oplabToken:'td_oplab_token', capital:'td_capital', vxbr:'td_vxbr', notify:'td_notify_enabled' };
 function lsGet(k, def) { try { var v = localStorage.getItem(k); return v === null ? def : v; } catch(e) { return def; } }
 function lsSet(k, v) { try { localStorage.setItem(k, v); } catch(e) {} }
 
@@ -964,6 +967,51 @@ function evaluateStructure(pos){
   var cd = calcCreditoEDesmonte(legs);
   return { legs:abertas, tr:tr, bes:bes, nearestDist:nearestDist, nearestBe:nearestBe, pct:pct, dte:dte, pnlNow:pnlNow, m:m, gates:gates, roll:roll, spot:spot, cd:cd };
 }
+
+// ─── NOTIFICAÇÕES DE ROLAGEM (browser) ───────────────────────────────────────
+// Dispara uma notificação do sistema (Notification API) quando o status
+// consolidado de uma estrutura muda pra algo que exige ação (sai de
+// "Aguardar"), ou quando uma perna acende a divergência Δ vs. preço-gatilho.
+// Só funciona com a aba aberta (mesmo minimizada) e permissão concedida —
+// é a rede de aviso de curto prazo; a de longo prazo (independe do desk
+// aberto) é a tarefa agendada, fora deste arquivo.
+var _notifyBaseline = {};   // posKey -> { label, divergentSet:{symbol:true} }
+var _notifySeenAny = false; // vira true no fim do primeiro refreshAll da sessão — evita notificar o estado inicial
+function isNotifyArmed(){
+  return lsGet(LS_KEYS.notify,'0')==='1' && typeof Notification!=='undefined' && Notification.permission==='granted';
+}
+async function toggleNotify(){
+  var chk=document.getElementById('notifyChk');
+  if (!chk) return;
+  if (chk.checked){
+    if (typeof Notification==='undefined'){ alert('Este navegador não suporta notificações do sistema.'); chk.checked=false; return; }
+    var perm=Notification.permission;
+    if (perm!=='granted') perm=await Notification.requestPermission();
+    if (perm!=='granted'){ chk.checked=false; lsSet(LS_KEYS.notify,'0'); return; }
+    lsSet(LS_KEYS.notify,'1');
+  } else {
+    lsSet(LS_KEYS.notify,'0');
+  }
+}
+function fireNotify(title, body, tag){
+  if (!isNotifyArmed()) return;
+  try{ new Notification(title, { body:body, tag:tag }); }catch(e){}
+}
+function checkRollNotifications(posKey, posLabel, ev){
+  var divergentNow={};
+  ev.tr.legs.forEach(function(x){ if (x.divergiu) divergentNow[x.leg.symbol||(x.tipo+'K'+x.strike)]=true; });
+  var prev=_notifyBaseline[posKey];
+  if (prev && _notifySeenAny){
+    if (ev.roll.label!==prev.label && ev.roll.label!=='Aguardar'){
+      fireNotify('⚠ '+posLabel, ev.roll.label+' — '+ev.roll.desc, 'roll-'+posKey);
+    }
+    Object.keys(divergentNow).forEach(function(sym){
+      if (!prev.divergentSet[sym]) fireNotify('⚠ Gatilho desatualizado', posLabel+' · '+sym+' — Δ já cruzou o limiar, preço-gatilho recalculado.', 'div-'+posKey+'-'+sym);
+    });
+  }
+  _notifyBaseline[posKey]={ label:ev.roll.label, divergentSet:divergentNow };
+}
+
 function renderEstruturas(positions){
   var container=document.getElementById('strats');
   var withLegs = positions.filter(function(p){ return (p.details&&p.details.legs&&p.details.legs.length); });
@@ -971,6 +1019,7 @@ function renderEstruturas(positions){
   var html='';
   withLegs.forEach(function(pos, idx){
     var ev = evaluateStructure(pos);
+    checkRollNotifications(pos.id!=null?('id'+pos.id):(pos.name||('idx'+idx)), pos.name||'Posição', ev);
     var mc = mapColor(ev.roll.color);
     var plCls = ev.pnlNow>=0?'green':'red';
     var pctClamp = Math.max(0, Math.min(100, ev.pct));
@@ -1255,6 +1304,7 @@ async function refreshAll(){
   safeStep(renderOportRadar, 'radar de oportunidades');
   safeStep(buildSnap, 'snapshot');
   document.getElementById('lastUpd').textContent = 'Atualizado: '+new Date().toLocaleTimeString('pt-BR');
+  _notifySeenAny = true; // a partir do próximo refresh, mudanças de status já podem notificar
 }
 function toggleAuto(){
   var chk=document.getElementById('autoChk');
@@ -1270,6 +1320,14 @@ function toggleAuto(){
     else { capInput.value=''; CAPITAL_CONFIRMADO=false; }
     var savedVx = parseFloat(lsGet(LS_KEYS.vxbr,''));
     if (savedVx>0){ radarData.vxbr=savedVx; document.getElementById('vxbrIn').value=savedVx.toFixed(2); }
+    var notifyChk = document.getElementById('notifyChk');
+    if (notifyChk){
+      // Só religa sozinho se a permissão do navegador ainda estiver concedida —
+      // se o usuário revogou nas configurações do site, o checkbox volta desmarcado.
+      var wantNotify = lsGet(LS_KEYS.notify,'0')==='1';
+      notifyChk.checked = wantNotify && typeof Notification!=='undefined' && Notification.permission==='granted';
+      if (wantNotify && !notifyChk.checked) lsSet(LS_KEYS.notify,'0');
+    }
     var saved = lsGet(LS_KEYS.oplabToken, '');
     var el = document.getElementById('apiKey');
     if (el && saved){
