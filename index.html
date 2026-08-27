@@ -91,6 +91,7 @@ canvas{width:100%;height:260px;display:block;background:var(--panel2);border-rad
 .delta-cell{position:relative}
 .dwarn{color:var(--amber);font-size:9px;vertical-align:super;cursor:help}
 .delta-note{font-size:11px;color:var(--amber);margin-top:6px;display:flex;gap:5px;align-items:flex-start}
+.gdiv{background:rgba(232,178,58,.14);border:1px solid rgba(232,178,58,.35);color:var(--amber);font-size:11px;font-weight:700;padding:5px 8px;border-radius:6px;margin:6px 0 2px}
 .diag{background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-top:12px}
 .diag .dtitle{color:var(--muted);font-size:11px;text-transform:uppercase;margin-bottom:8px}
 .diag-leg{display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:4px 0;border-bottom:1px dashed var(--border)}
@@ -456,6 +457,23 @@ function triggerPriceForLeg(leg, dte, ivPct, target){
   if (px<=K*0.56||px>=K*1.44) return null;
   return px;
 }
+// ─── DIVERGÊNCIA Δ MERCADO vs. PREÇO-GATILHO ─────────────────────────────────
+// O Δ mercado (ao vivo, via Oplab) tem precedência sobre o preço-gatilho
+// exibido: se a IV da perna mudou desde o último cálculo do gatilho (ou a
+// bisecção falhou, ex. bs.gatilho fora da faixa plausível), o preço mostrado
+// pode ficar desatualizado enquanto o delta ao vivo continua correto. Regra:
+// delta já cruzou o limiar de Nível A da faixa de DTE, mas o spot ainda não
+// alcançou o preço-gatilho exibido → é divergência, avisa e recalcula.
+function checarDivergenciaGatilho(p){
+  var deltaJaCruzou = p.deltaMercadoAbs >= p.limiarDelta;
+  var precoJaCruzou = p.precoGatilho==null ? false : (p.isCall
+    ? p.spotAtual >= p.precoGatilho
+    : p.spotAtual <= p.precoGatilho);
+  return deltaJaCruzou && !precoJaCruzou;
+}
+// Último preço-gatilho exibido por perna (symbol -> R$), pra comparar
+// "antigo → novo" quando a divergência dispara e o preço é recalculado.
+var _lastTriggerPx = {};
 function calcPositionGreeks(legs){
   var cache = buildGreeksCache();
   var spot = spotData.close||0;
@@ -611,8 +629,21 @@ function checkRollTriggers(pos){
       if (d===null){ var bs=bsGreeks(spot,leg.strike||0,legDte,ivRef,leg['instrument-type']==='CALL'); d=bs?bs.delta:0; }
       ivLeg=(og&&og.iv>0)?normIvPct(og.iv):ivRef;
     }
-    return { leg:leg, tipo:leg['instrument-type']||'', strike:leg.strike||0, delta:d, absDelta:Math.abs(d),
-      breach:Math.abs(d)>=trigger, triggerPx:triggerPriceForLeg(leg,legDte,ivLeg,trigger) };
+    var isCall = (leg['instrument-type']==='CALL');
+    var absDelta = Math.abs(d);
+    // Recalcula o preço-gatilho com a IV ATUAL da perna (mesma bisecção de
+    // sempre) e compara contra o que estava exibido antes desta atualização.
+    var sym = leg.symbol || (leg['instrument-type']+'K'+(leg.strike||0));
+    var precoExibidoAntes = _lastTriggerPx[sym];
+    var precoNovo = triggerPriceForLeg(leg,legDte,ivLeg,trigger);
+    var divergiu = checarDivergenciaGatilho({
+      deltaMercadoAbs: absDelta, limiarDelta: trigger, spotAtual: spot,
+      precoGatilho: precoExibidoAntes!==undefined ? precoExibidoAntes : precoNovo, isCall: isCall
+    });
+    _lastTriggerPx[sym] = precoNovo;
+    return { leg:leg, tipo:leg['instrument-type']||'', strike:leg.strike||0, delta:d, absDelta:absDelta,
+      breach:absDelta>=trigger, triggerPx:precoNovo, isCall:isCall,
+      divergiu:divergiu, triggerPxAntigo:(precoExibidoAntes!==undefined?precoExibidoAntes:null) };
   });
   var budget=getDeltaBudgetReais();
   var portfolio=calcPortfolioNetDeltaReais();
@@ -961,8 +992,17 @@ function renderEstruturas(positions){
     }).join('');
     var legLines = ev.tr.legs.map(function(x){
       var distTxt = x.triggerPx ? (((x.triggerPx-ev.spot)/ev.spot*100)>=0?'+':'')+(((x.triggerPx-ev.spot)/ev.spot*100)).toFixed(1)+'%' : '—';
-      return '<div class="diag-leg"><span class="lname">'+(x.leg.symbol||'?')+' '+x.tipo+' K'+x.strike.toFixed(0)+'</span>'
-        + '<span class="lstat">'+(x.absDelta*100).toFixed(0)+'Δ · gatilho '+(x.triggerPx?'R$ '+x.triggerPx.toFixed(2):'—')+' · dist. '+distTxt+'</span></div>';
+      var gatilhoTxt;
+      if (x.divergiu && x.triggerPxAntigo!=null && x.triggerPx!=null && Math.abs(x.triggerPxAntigo-x.triggerPx)>=0.01){
+        gatilhoTxt = '<s style="color:var(--muted)">R$ '+x.triggerPxAntigo.toFixed(2)+'</s> → R$ '+x.triggerPx.toFixed(2);
+      } else {
+        gatilhoTxt = x.triggerPx ? 'R$ '+x.triggerPx.toFixed(2) : '—';
+      }
+      var badge = x.divergiu
+        ? '<div class="gdiv">⚠ Δ já bateu '+(x.absDelta*100).toFixed(0)+'Δ — preço-gatilho desatualizado</div>'
+        : '';
+      return badge + '<div class="diag-leg"><span class="lname">'+(x.leg.symbol||'?')+' '+x.tipo+' K'+x.strike.toFixed(0)+'</span>'
+        + '<span class="lstat">'+(x.absDelta*100).toFixed(0)+'Δ · gatilho '+gatilhoTxt+' · dist. '+distTxt+'</span></div>';
     }).join('');
     html += '<div class="strat" id="st'+idx+'" style="border-left-color:'+mc.v+'">'
       + '<div class="strat-head" onclick="toggleStrat('+idx+')">'
@@ -1155,7 +1195,12 @@ function buildSnap(){
     var g = calcPositionGreeks(legs);
     s += '  Gregas agregadas desta estrutura: Δ'+g.delta.toFixed(0)+' Θ'+g.theta.toFixed(0)+' Γ'+g.gamma.toFixed(1)+' ν'+g.vega.toFixed(0)+'\n';
     ev.tr.legs.forEach(function(x){
-      s += '  [gatilho] '+(x.leg.symbol||'?')+' '+x.tipo+' K'+x.strike.toFixed(0)+' '+(x.absDelta*100).toFixed(0)+'Δ dispara em '+(x.triggerPx?'R$'+x.triggerPx.toFixed(2):'—')+'\n';
+      var precoTxt = x.triggerPx ? 'R$'+x.triggerPx.toFixed(2) : '—';
+      if (x.divergiu){
+        s += '  ⚠ Δ já bateu '+(x.absDelta*100).toFixed(0)+'Δ — preço-gatilho desatualizado\n';
+        if (x.triggerPxAntigo!=null && x.triggerPx!=null && Math.abs(x.triggerPxAntigo-x.triggerPx)>=0.01) precoTxt = 'R$'+x.triggerPxAntigo.toFixed(2)+' → R$'+x.triggerPx.toFixed(2);
+      }
+      s += '  [gatilho] '+(x.leg.symbol||'?')+' '+x.tipo+' K'+x.strike.toFixed(0)+' '+(x.absDelta*100).toFixed(0)+'Δ dispara em '+precoTxt+'\n';
     });
   });
   s += '\nP&L TOTAL: '+(totalPnl>=0?'+':'')+'R$'+totalPnl.toFixed(2)+'\n';
