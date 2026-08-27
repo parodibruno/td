@@ -17,6 +17,9 @@ body{margin:0;background:var(--bg);color:var(--txt);font-family:ui-monospace,Con
 #gate .ver{color:var(--muted);font-size:11px;margin-top:16px;text-align:center}
 input{background:var(--panel2);border:1px solid var(--border);color:var(--txt);font-family:inherit;font-size:14px;padding:9px 11px;border-radius:7px;width:100%}
 button{background:var(--cyan);color:#062;border:none;font-family:inherit;font-weight:700;padding:10px 16px;border-radius:7px;cursor:pointer;font-size:13px}
+button:disabled{opacity:.55;cursor:not-allowed}
+@keyframes rico-spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+#rico.spin{display:inline-block;animation:rico-spin .7s linear infinite}
 button.ghost{background:transparent;border:1px solid var(--border);color:var(--txt)}
 #gateErr{color:var(--red);font-size:11px;margin-top:8px;min-height:14px}
 header{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
@@ -132,7 +135,7 @@ canvas{width:100%;height:260px;display:block;background:var(--panel2);border-rad
     <div class="ctl"><label>Capital (R$)</label><input id="capIn" value="" placeholder="100000" oninput="onCapitalInput(this.value)"></div>
     <div class="ctl"><label>VXBR</label><input id="vxbrIn" value="" placeholder="19.01" oninput="onVxbrInput(this.value)"></div>
     <div class="ctl"><label>&nbsp;</label><span class="info" id="budgetInfo">Orç. Nível B (10%): <b>—</b></span></div>
-    <button class="ghost" onclick="refreshAll()" style="margin-left:auto"><span id="rico">↻</span> Atualizar</button>
+    <button class="ghost" id="refreshBtn" onclick="refreshAll()" style="margin-left:auto"><span id="rico">↻</span> <span id="refreshBtnLabel">Atualizar</span></button>
     <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);cursor:pointer">
       <input type="checkbox" id="autoChk" onchange="toggleAuto()" style="width:auto;accent-color:var(--cyan)"> Auto (30s)
     </label>
@@ -276,7 +279,27 @@ async function handleLogin(){
   lsSet(LS_KEYS.oplabToken, k);
   document.getElementById('gate').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
+  applyDefaultToggles();
   refreshAll();
+}
+// Auto (30s) e 🔔 Notificar rolagem vêm ligados por padrão a cada login —
+// chamado só depois que o app aparece, pra não bater na API com token vazio
+// enquanto o usuário ainda está na tela de gate.
+function applyDefaultToggles(){
+  var autoChk = document.getElementById('autoChk');
+  if (autoChk && !autoChk.checked){ autoChk.checked = true; toggleAuto(); }
+  var notifyChk = document.getElementById('notifyChk');
+  if (notifyChk && !notifyChk.checked){
+    notifyChk.checked = true;
+    lsSet(LS_KEYS.notify, '1');
+    if (typeof Notification !== 'undefined' && Notification.permission === 'default'){
+      // Melhor esforço — sem gesto de clique o navegador pode ignorar o
+      // pedido; se ignorar, a caixa fica marcada mas só passa a notificar
+      // de verdade quando o usuário conceder a permissão (ex. clicando na
+      // própria caixa de novo).
+      Notification.requestPermission();
+    }
+  }
 }
 function logout(){
   tok=''; window._apiKey=null; curPositions=[]; seriesInfo={};
@@ -1285,26 +1308,43 @@ function copySnap(){
 function safeStep(fn, label){
   try{ fn(); }catch(e){ console.error('['+label+']', e); }
 }
+var _refreshing = false;
 async function refreshAll(){
+  // Evita empilhar refreshes (clique duplo, ou clique manual durante o ciclo
+  // Auto) — e dá feedback visual de que o clique foi recebido, que antes
+  // não existia (o ícone nunca girava nem voltava ao normal).
+  if (_refreshing) return;
+  _refreshing = true;
   var ico=document.getElementById('rico');
-  if (ico) ico.style.display='inline-block';
+  var btn=document.getElementById('refreshBtn');
+  var lbl=document.getElementById('refreshBtnLabel');
+  if (ico) ico.classList.add('spin');
+  if (btn) btn.disabled = true;
+  if (lbl) lbl.textContent = 'Atualizando...';
   try{
-    await Promise.all([loadSpot(), loadSeries(), loadStrategies(), loadVolatility()]);
-  }catch(e){ console.error('[carregamento de dados]', e); }
-  try{ await loadRadarVxbr(); }catch(e){ console.error('[VXBR]', e); }
-  try{ await loadVies(); }catch(e){ console.error('[viés/histórico]', e); }
-  safeStep(renderHeaderSpot, 'header/spot');
-  safeStep(renderIvCard, 'IV card');
-  safeStep(renderSigmaRangeCard, 'faixa de preço ±σ');
-  safeStep(function(){ onCapitalInput(document.getElementById('capIn').value); }, 'capital');
-  safeStep(renderPnlAndStressCards, 'P&L/estresse');
-  safeStep(buildPayoffTabsUI, 'payoff');
-  safeStep(function(){ renderEstruturas(curPositions); }, 'minhas estruturas');
-  safeStep(renderViesBody, 'viés direcional');
-  safeStep(renderOportRadar, 'radar de oportunidades');
-  safeStep(buildSnap, 'snapshot');
-  document.getElementById('lastUpd').textContent = 'Atualizado: '+new Date().toLocaleTimeString('pt-BR');
-  _notifySeenAny = true; // a partir do próximo refresh, mudanças de status já podem notificar
+    try{
+      await Promise.all([loadSpot(), loadSeries(), loadStrategies(), loadVolatility()]);
+    }catch(e){ console.error('[carregamento de dados]', e); }
+    try{ await loadRadarVxbr(); }catch(e){ console.error('[VXBR]', e); }
+    try{ await loadVies(); }catch(e){ console.error('[viés/histórico]', e); }
+    safeStep(renderHeaderSpot, 'header/spot');
+    safeStep(renderIvCard, 'IV card');
+    safeStep(renderSigmaRangeCard, 'faixa de preço ±σ');
+    safeStep(function(){ onCapitalInput(document.getElementById('capIn').value); }, 'capital');
+    safeStep(renderPnlAndStressCards, 'P&L/estresse');
+    safeStep(buildPayoffTabsUI, 'payoff');
+    safeStep(function(){ renderEstruturas(curPositions); }, 'minhas estruturas');
+    safeStep(renderViesBody, 'viés direcional');
+    safeStep(renderOportRadar, 'radar de oportunidades');
+    safeStep(buildSnap, 'snapshot');
+    document.getElementById('lastUpd').textContent = 'Atualizado: '+new Date().toLocaleTimeString('pt-BR');
+    _notifySeenAny = true; // a partir do próximo refresh, mudanças de status já podem notificar
+  } finally {
+    if (ico) ico.classList.remove('spin');
+    if (btn) btn.disabled = false;
+    if (lbl) lbl.textContent = 'Atualizar';
+    _refreshing = false;
+  }
 }
 function toggleAuto(){
   var chk=document.getElementById('autoChk');
@@ -1320,14 +1360,9 @@ function toggleAuto(){
     else { capInput.value=''; CAPITAL_CONFIRMADO=false; }
     var savedVx = parseFloat(lsGet(LS_KEYS.vxbr,''));
     if (savedVx>0){ radarData.vxbr=savedVx; document.getElementById('vxbrIn').value=savedVx.toFixed(2); }
-    var notifyChk = document.getElementById('notifyChk');
-    if (notifyChk){
-      // Só religa sozinho se a permissão do navegador ainda estiver concedida —
-      // se o usuário revogou nas configurações do site, o checkbox volta desmarcado.
-      var wantNotify = lsGet(LS_KEYS.notify,'0')==='1';
-      notifyChk.checked = wantNotify && typeof Notification!=='undefined' && Notification.permission==='granted';
-      if (wantNotify && !notifyChk.checked) lsSet(LS_KEYS.notify,'0');
-    }
+    // Auto (30s) e 🔔 Notificar rolagem — estado inicial dos checkboxes só é
+    // decidido em applyDefaultToggles(), chamada depois do login (aqui embaixo
+    // ou em handleLogin()), pra sempre vir ligado por padrão a cada sessão.
     var saved = lsGet(LS_KEYS.oplabToken, '');
     var el = document.getElementById('apiKey');
     if (el && saved){
@@ -1336,6 +1371,7 @@ function toggleAuto(){
       window._apiKey = saved;
       document.getElementById('gate').classList.add('hidden');
       document.getElementById('app').classList.remove('hidden');
+      applyDefaultToggles();
       refreshAll();
       return;
     }
