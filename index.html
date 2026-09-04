@@ -585,11 +585,11 @@ function calcPayoffAtPrice(legs, s){
 function calcPayoffNow(legs){
   var pnl=0;
   legs.forEach(function(leg){
-    var ini=leg.initial||0, qty=leg.amount||0, close=leg.close||0, ask=leg.ask||0, bid=leg.bid||0;
+    var pxIn=leg['price-in']||0, qty=leg.amount||0, close=leg.close||0, ask=leg.ask||0, bid=leg.bid||0;
     var action=leg.type||'SELL';
     if (qty===0){ if (leg.current!=null) pnl+=leg.current; return; }
     var refPrice = action==='SELL' ? (ask>0?ask:close) : (bid>0?bid:close);
-    if (action==='SELL') pnl += ini-(refPrice*qty); else pnl += (refPrice*qty)-Math.abs(ini);
+    if (action==='SELL') pnl += (pxIn*qty)-(refPrice*qty); else pnl += (refPrice*qty)-(Math.abs(pxIn)*qty);
   });
   return pnl;
 }
